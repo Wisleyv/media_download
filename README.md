@@ -10,14 +10,19 @@ Simple Windows GUI for yt-dlp downloads, focused on easy use by non-technical us
 - Optional download/update of yt-dlp
 
 ## Requirements
-- Windows
-- PowerShell 7+ (`pwsh`)
+- Windows 10/11
+- Windows PowerShell 5.1 (pre-installed)
 - yt-dlp (can be downloaded from the UI)
 
 ## Run
+- Double-click `yt-gui.bat`
+- Or run:
 ```powershell
-pwsh -STA -File .\yt-gui.ps1
+powershell.exe -STA -File .\yt-gui.ps1
 ```
+
+## Tutorial (PT-BR)
+See [TUTORIAL_PT_BR.md](TUTORIAL_PT_BR.md)
 
 ## Notes
 - The app stores settings in `%APPDATA%\yt-gui\settings.json`.

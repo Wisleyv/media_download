@@ -9,7 +9,13 @@ Add-Type -AssemblyName System.Drawing
 })
 
 if ([System.Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') {
-  [System.Windows.Forms.MessageBox]::Show('Este script precisa rodar em STA. Use: pwsh -STA -File yt-gui.ps1') | Out-Null
+  $ps = Get-Command 'powershell.exe' -ErrorAction SilentlyContinue
+  if ($ps) {
+    $argsList = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-STA', '-File', $PSCommandPath) + @($args)
+    Start-Process -FilePath $ps.Source -ArgumentList $argsList -WorkingDirectory (Split-Path -Path $PSCommandPath -Parent) | Out-Null
+    return
+  }
+  [System.Windows.Forms.MessageBox]::Show('Este script precisa rodar em STA. Use: powershell.exe -STA -File yt-gui.ps1') | Out-Null
   return
 }
 
@@ -48,6 +54,52 @@ function Resolve-YtDlpPath([string]$candidate) {
 function Write-Log([string]$path, [string]$message) {
   if (-not $path) { return }
   try { Add-Content -Path $path -Value $message -Encoding UTF8 } catch { }
+}
+
+function Test-PeHeader([string]$path) {
+  try {
+    $bytes = Get-Content -Path $path -Encoding Byte -TotalCount 2
+    return ($bytes.Length -eq 2 -and $bytes[0] -eq 0x4D -and $bytes[1] -eq 0x5A)
+  } catch {
+    return $false
+  }
+}
+
+function Move-FileWithRetry([string]$source, [string]$destination, [int]$attempts = 3) {
+  for ($i = 1; $i -le $attempts; $i++) {
+    try {
+      Move-Item -Path $source -Destination $destination -Force
+      return $true
+    } catch {
+      $msg = $_.Exception.Message
+      Write-Log $script:updateLogPath ("Move attempt $i/$attempts failed: $msg")
+      Start-Sleep -Milliseconds 400
+    }
+  }
+  return $false
+}
+
+function Get-JsRuntimeInfo {
+  $candidates = @(
+    @{ Name = 'node'; Command = @('node.exe', 'node') },
+    @{ Name = 'deno'; Command = @('deno.exe', 'deno') },
+    @{ Name = 'bun'; Command = @('bun.exe', 'bun') }
+  )
+
+  foreach ($c in $candidates) {
+    $cmd = Get-Command $c.Command -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($cmd) {
+      return [pscustomobject]@{
+        Name = $c.Name
+        Args = @('--js-runtimes', $c.Name)
+      }
+    }
+  }
+
+  return [pscustomobject]@{
+    Name = 'none'
+    Args = @()
+  }
 }
 
 $settings = Get-Settings
@@ -148,6 +200,12 @@ $rb1080.Location = '10,42'
 $grp.Controls.Add($rb1080)
 if ($settings.quality -eq '1080') { $rb1080.Checked = $true; $rb720.Checked = $false }
 
+$chkShowWarnings = New-Object System.Windows.Forms.CheckBox
+$chkShowWarnings.Text = 'Mostrar avisos (avancado)'
+$chkShowWarnings.AutoSize = $true
+$chkShowWarnings.Location = [System.Drawing.Point]::new(10, 380 + $topOffset)
+$form.Controls.Add($chkShowWarnings)
+
 $progress = New-Object System.Windows.Forms.ProgressBar
 $progress.Location = [System.Drawing.Point]::new(10, 385 + $topOffset)
 $progress.Size = '720,24'
@@ -199,7 +257,9 @@ function Update-Layout {
   $rb1080.Location = [System.Drawing.Point]::new(10, $rb720.Location.Y + $rb720.PreferredSize.Height + 6)
   $grp.Height = $rb1080.Location.Y + $rb1080.PreferredSize.Height + 10
 
-  $progress.Location = [System.Drawing.Point]::new(10, $grp.Bottom + 10)
+  $chkShowWarnings.Location = [System.Drawing.Point]::new(10, $grp.Bottom + 6)
+
+  $progress.Location = [System.Drawing.Point]::new(10, $chkShowWarnings.Bottom + 10)
   $progress.Width = $form.ClientSize.Width - 20
   $status.Location = [System.Drawing.Point]::new(10, $progress.Bottom + 6)
   $status.Width = $form.ClientSize.Width - 20
@@ -226,6 +286,7 @@ function Set-UiEnabled([bool]$enabled) {
   $txtFolder.Enabled = $enabled
   $rb720.Enabled = $enabled
   $rb1080.Enabled = $enabled
+  $chkShowWarnings.Enabled = $enabled
   $btnStart.Enabled = $enabled
   $btnYt.Enabled = $enabled
   $btnUpdate.Enabled = $enabled
@@ -371,6 +432,8 @@ function Start-DownloadProcess([int]$index) {
 
 function Handle-ProcessExit {
   $exitCode = $script:currentProcess.ExitCode
+  $exitCodeText = if ($null -eq $exitCode -or $exitCode -eq '') { '' } else { $exitCode.ToString() }
+  $exitKnown = -not [string]::IsNullOrWhiteSpace($exitCodeText)
   $out = ''
   $err = ''
   try { if (Test-Path $script:currentOutFile) { $out = Get-Content -Path $script:currentOutFile -Raw } } catch { }
@@ -380,17 +443,25 @@ function Handle-ProcessExit {
     $output = 'Sem saida do yt-dlp. Verifique se o executavel inicia, se ha bloqueio do antivirus, ou se o video exige login/cookies.'
   }
 
-  Write-Log $script:logPath ("ExitCode: $exitCode`r`n$output`r`n")
+  $hasError = $output -match '(?m)^(ERROR:|ERROR |FATAL|Traceback)'
+  $success = if ($exitKnown) { $exitCode -eq 0 } else { -not $hasError }
+  $recordExitCode = if ($exitKnown) { $exitCode } elseif ($success) { 0 } else { 1 }
+
+  if ($exitKnown) {
+    Write-Log $script:logPath ("ExitCode: $exitCodeText`r`n$output`r`n")
+  } else {
+    Write-Log $script:logPath ("ExitCode: <unknown>`r`n$output`r`n")
+  }
   $script:results.Add([pscustomobject]@{
     Url      = $script:downloadQueue[$script:currentIndex]
-    Success  = ($exitCode -eq 0)
-    ExitCode = $exitCode
+    Success  = $success
+    ExitCode = $recordExitCode
     Output   = $output
   })
 
   $progress.Style = [System.Windows.Forms.ProgressBarStyle]::Blocks
   $progress.Value = $script:currentIndex + 1
-  if ($exitCode -eq 0) {
+  if ($success) {
     $status.Text = "Concluido $($script:currentIndex + 1) de $($script:downloadQueue.Count)."
   } else {
     $status.Text = "Falha ao baixar $($script:currentIndex + 1) de $($script:downloadQueue.Count)."
@@ -423,7 +494,16 @@ function Finish-Run([bool]$cancelled) {
   if ($failures.Count -gt 0) {
     $status.Text = 'Concluido com erros.'
     $firstFail = $failures | Select-Object -First 1
-    $tail = ($firstFail.Output -split "`r?`n" | Where-Object { $_ -ne '' } | Select-Object -Last 8) -join "`r`n"
+    $tail = ''
+    $showWarnings = $script:showWarnings -eq $true
+    if ($showWarnings) {
+      $tail = ($firstFail.Output -split "`r?`n" | Where-Object { $_ -ne '' } | Select-Object -Last 8) -join "`r`n"
+    } else {
+      $errorLines = $firstFail.Output -split "`r?`n" | Where-Object { $_ -match '^(ERROR:|ERROR |FATAL|Traceback)' }
+      if ($errorLines.Count -gt 0) {
+        $tail = ($errorLines | Select-Object -Last 2) -join "`r`n"
+      }
+    }
     $message = "Concluido com erros. Falhas: $($failures.Count)."
     if ($tail) { $message += "`r`n`r`nUltimas linhas:`r`n$tail" }
     if ($script:logPath) { $message += "`r`n`r`nLog: $script:logPath" }
@@ -470,30 +550,54 @@ $script:updateTimer.Add_Tick({
 
   $script:updateTimer.Stop()
   $exitCode = $script:updateProcess.ExitCode
+  $exitCodeText = if ($null -eq $exitCode -or $exitCode -eq '') { '' } else { $exitCode.ToString() }
+  $exitKnown = -not [string]::IsNullOrWhiteSpace($exitCodeText)
   $out = ''
   $err = ''
   try { if (Test-Path $script:updateOutFile) { $out = Get-Content -Path $script:updateOutFile -Raw } } catch { }
   try { if (Test-Path $script:updateErrFile) { $err = Get-Content -Path $script:updateErrFile -Raw } } catch { }
   $output = ($out + "`r`n" + $err).Trim()
   if ($output) { Write-Log $script:updateLogPath $output }
+  if ($exitKnown) {
+    Write-Log $script:updateLogPath ("ExitCode: $exitCodeText")
+  } else {
+    Write-Log $script:updateLogPath 'ExitCode: <unknown>'
+  }
+
+  $tempExists = Test-Path $script:updateTempFile
+  $tempSize = $null
+  if ($tempExists) {
+    try { $tempSize = (Get-Item -Path $script:updateTempFile).Length } catch { }
+    Write-Log $script:updateLogPath ("TempFile: $($script:updateTempFile) Size: $tempSize")
+  } else {
+    Write-Log $script:updateLogPath ("TempFile missing: $($script:updateTempFile)")
+  }
 
   $success = $false
   $errMsg = $null
-  if ($exitCode -eq 0 -and (Test-Path $script:updateTempFile)) {
-    try {
-      $len = (Get-Item -Path $script:updateTempFile).Length
-      if ($len -gt 0) {
-        Move-Item -Path $script:updateTempFile -Destination $script:updateTargetPath -Force
+  $exitOk = $exitKnown -and $exitCode -eq 0
+  $exitUnknown = -not $exitKnown
+  if (($exitOk -or $exitUnknown) -and $tempExists) {
+    if ($tempSize -gt 0 -and (Test-PeHeader $script:updateTempFile)) {
+      if ($exitUnknown) { Write-Log $script:updateLogPath 'ExitCode unknown; proceeding because file looks valid.' }
+      if (Move-FileWithRetry -source $script:updateTempFile -destination $script:updateTargetPath -attempts 4) {
         $success = $true
+        try { Unblock-File -Path $script:updateTargetPath -ErrorAction SilentlyContinue } catch { }
       } else {
-        $errMsg = 'Arquivo baixado esta vazio.'
+        $errMsg = 'Falha ao salvar o yt-dlp.exe. Verifique permissoes ou antivirus.'
       }
-    } catch {
-      $errMsg = "Falha ao salvar o yt-dlp.exe: $($_.Exception.Message)"
+    } elseif ($tempSize -gt 0) {
+      $errMsg = 'Arquivo baixado parece invalido. Verifique proxy ou antivirus.'
+    } else {
+      $errMsg = 'Arquivo baixado esta vazio.'
     }
+  } elseif (($exitOk -or $exitUnknown) -and -not $tempExists) {
+    $errMsg = 'Arquivo temporario nao encontrado apos download. O antivirus pode ter removido o arquivo.'
   } else {
-    $errMsg = "Falha ao baixar yt-dlp. ExitCode: $exitCode."
+    $errMsg = "Falha ao baixar yt-dlp. ExitCode: $exitCodeText."
   }
+
+  if ($errMsg) { Write-Log $script:updateLogPath $errMsg }
 
   if ($success) {
     $txtYt.Text = $script:updateTargetPath
@@ -547,7 +651,22 @@ $btnStart.Add_Click({
  }
  $txtYt.Text = $ytPath
 
- if ($rb720.Checked) { $fmt = 'bv*[height<=720]+ba/b[height<=720]/best'; $quality = '720' } else { $fmt = 'bv*[height<=1080]+ba/b[height<=1080]/best'; $quality = '1080' }
+ $ffmpegCmd = Get-Command 'ffmpeg.exe','ffmpeg' -ErrorAction SilentlyContinue | Select-Object -First 1
+ $useFfmpeg = $ffmpegCmd -ne $null
+ if (-not $useFfmpeg) {
+   [System.Windows.Forms.MessageBox]::Show('ffmpeg nao encontrado. O download sera feito em arquivo unico (qualidade menor).') | Out-Null
+ }
+
+ $jsRuntime = Get-JsRuntimeInfo
+ $script:showWarnings = $chkShowWarnings.Checked
+
+ $height = if ($rb720.Checked) { 720 } else { 1080 }
+ if ($useFfmpeg) {
+   $fmt = "bv*[height<=$height][ext=mp4]+ba[ext=m4a]/b[height<=$height][ext=mp4]/best[ext=mp4]"
+ } else {
+   $fmt = "b[height<=$height][ext=mp4]/b[height<=$height]/best"
+ }
+ $quality = if ($rb720.Checked) { '720' } else { '1080' }
  Save-Settings -ytPath $txtYt.Text -folder $folder -quality $quality
 
  $progress.Minimum = 0
@@ -562,13 +681,20 @@ $btnStart.Add_Click({
 
  $outputTemplate = Join-Path -Path $folder -ChildPath '%(title)s.%(ext)s'
  $logPath = Join-Path -Path $folder -ChildPath ("yt-gui-log-{0}.txt" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
- $baseArgs = @('-f', $fmt, '--merge-output-format', 'mp4', '--restrict-filenames', '--newline', '-o', $outputTemplate)
+ $baseArgs = @('-f', $fmt)
+ $baseArgs += $jsRuntime.Args
+ if ($useFfmpeg) { $baseArgs += @('--merge-output-format', 'mp4') }
+ if (-not $chkShowWarnings.Checked) { $baseArgs += '--no-warnings' }
+ $baseArgs += @('--restrict-filenames', '--newline', '-o', $outputTemplate)
  try {
    "yt-gui log - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" | Set-Content -Path $logPath -Encoding UTF8
    $script:lastLogPath = $logPath
     $startInfo = @(
       "Start: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
       "YtPath: $ytPath",
+      "Ffmpeg: $($useFfmpeg)",
+      "JsRuntime: $($jsRuntime.Name)",
+      "ShowWarnings: $($chkShowWarnings.Checked)",
       "Urls: $($urls.Count)",
       "Output: $outputTemplate",
       "Args: $($baseArgs -join ' ')",
