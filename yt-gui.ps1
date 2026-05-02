@@ -79,6 +79,72 @@ function Move-FileWithRetry([string]$source, [string]$destination, [int]$attempt
   return $false
 }
 
+function Get-FfmpegState([string]$ytPath) {
+  $ytDir = if ($ytPath) { Split-Path -Path $ytPath -Parent } else { $null }
+  if ($ytDir) {
+    $localFfmpeg = Join-Path $ytDir 'ffmpeg.exe'
+    if (Test-Path $localFfmpeg) {
+      return [pscustomobject]@{
+        Found  = $true
+        Path   = $localFfmpeg
+        Dir    = $ytDir
+        Source = 'local'
+      }
+    }
+  }
+
+  $cmd = Get-Command 'ffmpeg.exe','ffmpeg' -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($cmd) {
+    return [pscustomobject]@{
+      Found  = $true
+      Path   = $cmd.Source
+      Dir    = Split-Path -Path $cmd.Source -Parent
+      Source = 'path'
+    }
+  }
+
+  return [pscustomobject]@{
+    Found  = $false
+    Path   = $null
+    Dir    = $ytDir
+    Source = 'none'
+  }
+}
+
+function Install-FfmpegPortable([string]$targetFolder) {
+  $url = 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip'
+  $zipPath = Join-Path $env:TEMP ("ffmpeg-{0}.zip" -f ([guid]::NewGuid().ToString('N')))
+  $extractDir = Join-Path $env:TEMP ("ffmpeg-{0}" -f ([guid]::NewGuid().ToString('N')))
+
+  try {
+    Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing -TimeoutSec 60
+    Expand-Archive -Path $zipPath -DestinationPath $extractDir -Force
+
+    $ffmpegExe = Get-ChildItem -Path $extractDir -Recurse -Filter 'ffmpeg.exe' | Select-Object -First 1
+    $ffprobeExe = Get-ChildItem -Path $extractDir -Recurse -Filter 'ffprobe.exe' | Select-Object -First 1
+    if (-not $ffmpegExe) {
+      return [pscustomobject]@{ Success = $false; Message = 'ffmpeg.exe nao encontrado no pacote.' }
+    }
+
+    Copy-Item -Path $ffmpegExe.FullName -Destination (Join-Path $targetFolder 'ffmpeg.exe') -Force
+    if ($ffprobeExe) {
+      Copy-Item -Path $ffprobeExe.FullName -Destination (Join-Path $targetFolder 'ffprobe.exe') -Force
+    }
+
+    try { Unblock-File -Path (Join-Path $targetFolder 'ffmpeg.exe') -ErrorAction SilentlyContinue } catch { }
+    if ($ffprobeExe) {
+      try { Unblock-File -Path (Join-Path $targetFolder 'ffprobe.exe') -ErrorAction SilentlyContinue } catch { }
+    }
+
+    return [pscustomobject]@{ Success = $true; Message = 'ok' }
+  } catch {
+    return [pscustomobject]@{ Success = $false; Message = $_.Exception.Message }
+  } finally {
+    try { if (Test-Path $zipPath) { Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue } } catch { }
+    try { if (Test-Path $extractDir) { Remove-Item -Path $extractDir -Recurse -Force -ErrorAction SilentlyContinue } } catch { }
+  }
+}
+
 function Get-JsRuntimeInfo {
   $candidates = @(
     @{ Name = 'node'; Command = @('node.exe', 'node') },
@@ -362,8 +428,9 @@ function Start-YtDlpUpdate {
   $status.Text = 'Baixando yt-dlp...'
 
   $argsList = @('-L', '--fail', '-o', $script:updateTempFile, $url)
+  $argString = Join-ArgsList $argsList
   try {
-    $script:updateProcess = Start-Process -FilePath $curl.Source -ArgumentList $argsList -PassThru -NoNewWindow -RedirectStandardOutput $script:updateOutFile -RedirectStandardError $script:updateErrFile
+    $script:updateProcess = Start-Process -FilePath $curl.Source -ArgumentList $argString -PassThru -NoNewWindow -RedirectStandardOutput $script:updateOutFile -RedirectStandardError $script:updateErrFile
   } catch {
     $script:updateInProgress = $false
     Set-UiEnabled $true
@@ -412,7 +479,7 @@ function Start-DownloadProcess([int]$index) {
 
   Write-Log $script:logPath ("-----`r`nURL: $u`r`nArgs: $argString")
   try {
-    $script:currentProcess = Start-Process -FilePath $script:ytPath -ArgumentList $script:currentArgsList -PassThru -NoNewWindow -RedirectStandardOutput $script:currentOutFile -RedirectStandardError $script:currentErrFile
+    $script:currentProcess = Start-Process -FilePath $script:ytPath -ArgumentList $argString -PassThru -NoNewWindow -RedirectStandardOutput $script:currentOutFile -RedirectStandardError $script:currentErrFile
   } catch {
     $script:currentProcess = $null
     $errMsg = "EXCEPTION: $($_.Exception.Message)" + "`r`n" + ($_ | Out-String)
@@ -651,10 +718,35 @@ $btnStart.Add_Click({
  }
  $txtYt.Text = $ytPath
 
- $ffmpegCmd = Get-Command 'ffmpeg.exe','ffmpeg' -ErrorAction SilentlyContinue | Select-Object -First 1
- $useFfmpeg = $ffmpegCmd -ne $null
+ $ffmpegState = Get-FfmpegState $ytPath
+ $useFfmpeg = $ffmpegState.Found
+ $ffmpegLocation = if ($useFfmpeg) { $ffmpegState.Dir } else { $null }
+ $ffmpegSource = $ffmpegState.Source
+
  if (-not $useFfmpeg) {
-   [System.Windows.Forms.MessageBox]::Show('ffmpeg nao encontrado. O download sera feito em arquivo unico (qualidade menor).') | Out-Null
+   $msg = @(
+     'FFmpeg melhora a qualidade e permite juntar audio+video em um unico MP4.',
+     'Sem ele, o download pode sair em qualidade menor.',
+     '',
+     'Deseja baixar o FFmpeg portatil para a mesma pasta do yt-dlp.exe?'
+   ) -join "`r`n"
+   $choice = [System.Windows.Forms.MessageBox]::Show($msg, 'FFmpeg', [System.Windows.Forms.MessageBoxButtons]::YesNoCancel, [System.Windows.Forms.MessageBoxIcon]::Information)
+   if ($choice -eq [System.Windows.Forms.DialogResult]::Yes) {
+     $status.Text = 'Baixando ffmpeg...'
+     $form.Refresh()
+     $install = Install-FfmpegPortable -targetFolder $ffmpegState.Dir
+     if ($install.Success) {
+       $useFfmpeg = $true
+       $ffmpegLocation = $ffmpegState.Dir
+       $ffmpegSource = 'downloaded'
+       [System.Windows.Forms.MessageBox]::Show('ffmpeg baixado com sucesso.') | Out-Null
+     } else {
+       $res = [System.Windows.Forms.MessageBox]::Show("Falha ao baixar ffmpeg: $($install.Message)`r`nContinuar sem ffmpeg?", 'FFmpeg', [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Warning)
+       if ($res -ne [System.Windows.Forms.DialogResult]::Yes) { return }
+     }
+   } elseif ($choice -eq [System.Windows.Forms.DialogResult]::Cancel) {
+     return
+   }
  }
 
  $jsRuntime = Get-JsRuntimeInfo
@@ -683,6 +775,7 @@ $btnStart.Add_Click({
  $logPath = Join-Path -Path $folder -ChildPath ("yt-gui-log-{0}.txt" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
  $baseArgs = @('-f', $fmt)
  $baseArgs += $jsRuntime.Args
+ if ($useFfmpeg -and $ffmpegLocation) { $baseArgs += @('--ffmpeg-location', $ffmpegLocation) }
  if ($useFfmpeg) { $baseArgs += @('--merge-output-format', 'mp4') }
  if (-not $chkShowWarnings.Checked) { $baseArgs += '--no-warnings' }
  $baseArgs += @('--restrict-filenames', '--newline', '-o', $outputTemplate)
@@ -693,6 +786,8 @@ $btnStart.Add_Click({
       "Start: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
       "YtPath: $ytPath",
       "Ffmpeg: $($useFfmpeg)",
+      "FfmpegSource: $ffmpegSource",
+      "FfmpegLocation: $ffmpegLocation",
       "JsRuntime: $($jsRuntime.Name)",
       "ShowWarnings: $($chkShowWarnings.Checked)",
       "Urls: $($urls.Count)",
