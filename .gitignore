@@ -1,0 +1,16 @@
+# Logs
+yt-gui-log-*.txt
+yt-gui-update-log-*.txt
+
+# Binaries
+yt-dlp.exe
+
+# Output folders
+videos/
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# Editor
+.vscode/
