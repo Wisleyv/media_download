@@ -5,7 +5,8 @@ Simple Windows GUI for yt-dlp downloads, focused on easy use by non-technical us
 ## Features
 - Paste multiple URLs (one per line)
 - Choose output folder
-- Select 720p or 1080p
+- Video downloads: select 720p or 1080p (MP4)
+- Audio-only downloads: choose format (mp3/wav/flac) and quality (Low/Standard/HQ)
 - Responsive UI with cancel
 - Optional download/update of yt-dlp
 
@@ -13,6 +14,7 @@ Simple Windows GUI for yt-dlp downloads, focused on easy use by non-technical us
 - Windows 10/11
 - Windows PowerShell 5.1 (pre-installed)
 - yt-dlp (can be downloaded from the UI)
+- FFmpeg + FFprobe (recommended for best video results; required for audio-only downloads; the UI can download a portable copy)
 
 ## Run
 - Double-click `yt-gui.bat`

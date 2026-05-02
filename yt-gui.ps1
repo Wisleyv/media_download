@@ -32,7 +32,15 @@ function Get-Settings {
   return [pscustomobject]@{}
 }
 
-function Save-Settings([string]$ytPath, [string]$folder, [string]$quality, [string]$cookiesBrowser) {
+function Save-Settings(
+  [string]$ytPath,
+  [string]$folder,
+  [string]$quality,
+  [string]$cookiesBrowser,
+  [string]$downloadMode,
+  [string]$audioFormat,
+  [string]$audioQuality
+) {
   $dir = Split-Path -Path $settingsPath -Parent
   if (!(Test-Path $dir)) { New-Item -Path $dir -ItemType Directory -Force | Out-Null }
   [pscustomobject]@{
@@ -40,6 +48,9 @@ function Save-Settings([string]$ytPath, [string]$folder, [string]$quality, [stri
     folder  = $folder
     quality = $quality
     cookiesBrowser = $cookiesBrowser
+    downloadMode = $downloadMode
+    audioFormat = $audioFormat
+    audioQuality = $audioQuality
   } | ConvertTo-Json -Depth 3 | Set-Content -Path $settingsPath -Encoding ASCII
 }
 
@@ -84,23 +95,32 @@ function Get-FfmpegState([string]$ytPath) {
   $ytDir = if ($ytPath) { Split-Path -Path $ytPath -Parent } else { $null }
   if ($ytDir) {
     $localFfmpeg = Join-Path $ytDir 'ffmpeg.exe'
+    $localFfprobe = Join-Path $ytDir 'ffprobe.exe'
     if (Test-Path $localFfmpeg) {
+      $ffprobeFound = Test-Path $localFfprobe
       return [pscustomobject]@{
         Found  = $true
         Path   = $localFfmpeg
         Dir    = $ytDir
         Source = 'local'
+        FfprobeFound  = $ffprobeFound
+        FfprobePath   = if ($ffprobeFound) { $localFfprobe } else { $null }
+        FfprobeSource = if ($ffprobeFound) { 'local' } else { 'none' }
       }
     }
   }
 
   $cmd = Get-Command 'ffmpeg.exe','ffmpeg' -ErrorAction SilentlyContinue | Select-Object -First 1
+  $cmdFfprobe = Get-Command 'ffprobe.exe','ffprobe' -ErrorAction SilentlyContinue | Select-Object -First 1
   if ($cmd) {
     return [pscustomobject]@{
       Found  = $true
       Path   = $cmd.Source
       Dir    = Split-Path -Path $cmd.Source -Parent
       Source = 'path'
+      FfprobeFound  = [bool]$cmdFfprobe
+      FfprobePath   = if ($cmdFfprobe) { $cmdFfprobe.Source } else { $null }
+      FfprobeSource = if ($cmdFfprobe) { 'path' } else { 'none' }
     }
   }
 
@@ -109,10 +129,16 @@ function Get-FfmpegState([string]$ytPath) {
     Path   = $null
     Dir    = $ytDir
     Source = 'none'
+    FfprobeFound  = [bool]$cmdFfprobe
+    FfprobePath   = if ($cmdFfprobe) { $cmdFfprobe.Source } else { $null }
+    FfprobeSource = if ($cmdFfprobe) { 'path' } else { 'none' }
   }
 }
 
 function Install-FfmpegPortable([string]$targetFolder) {
+  if (-not $targetFolder -or -not (Test-Path $targetFolder)) {
+    return [pscustomobject]@{ Success = $false; Message = 'Pasta de destino invalida.' }
+  }
   $url = 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip'
   $zipPath = Join-Path $env:TEMP ("ffmpeg-{0}.zip" -f ([guid]::NewGuid().ToString('N')))
   $extractDir = Join-Path $env:TEMP ("ffmpeg-{0}" -f ([guid]::NewGuid().ToString('N')))
@@ -123,19 +149,15 @@ function Install-FfmpegPortable([string]$targetFolder) {
 
     $ffmpegExe = Get-ChildItem -Path $extractDir -Recurse -Filter 'ffmpeg.exe' | Select-Object -First 1
     $ffprobeExe = Get-ChildItem -Path $extractDir -Recurse -Filter 'ffprobe.exe' | Select-Object -First 1
-    if (-not $ffmpegExe) {
-      return [pscustomobject]@{ Success = $false; Message = 'ffmpeg.exe nao encontrado no pacote.' }
+    if (-not $ffmpegExe -or -not $ffprobeExe) {
+      return [pscustomobject]@{ Success = $false; Message = 'ffmpeg.exe e/ou ffprobe.exe nao encontrados no pacote.' }
     }
 
     Copy-Item -Path $ffmpegExe.FullName -Destination (Join-Path $targetFolder 'ffmpeg.exe') -Force
-    if ($ffprobeExe) {
-      Copy-Item -Path $ffprobeExe.FullName -Destination (Join-Path $targetFolder 'ffprobe.exe') -Force
-    }
+    Copy-Item -Path $ffprobeExe.FullName -Destination (Join-Path $targetFolder 'ffprobe.exe') -Force
 
     try { Unblock-File -Path (Join-Path $targetFolder 'ffmpeg.exe') -ErrorAction SilentlyContinue } catch { }
-    if ($ffprobeExe) {
-      try { Unblock-File -Path (Join-Path $targetFolder 'ffprobe.exe') -ErrorAction SilentlyContinue } catch { }
-    }
+    try { Unblock-File -Path (Join-Path $targetFolder 'ffprobe.exe') -ErrorAction SilentlyContinue } catch { }
 
     return [pscustomobject]@{ Success = $true; Message = 'ok' }
   } catch {
@@ -247,10 +269,34 @@ $txtFolder.Location = [System.Drawing.Point]::new(130, 270 + $topOffset)
 if ($settings.folder) { $txtFolder.Text = $settings.folder }
 $form.Controls.Add($txtFolder)
 
+$grpMode = New-Object System.Windows.Forms.GroupBox
+$grpMode.Text = 'Tipo de download'
+$grpMode.Size = '220,70'
+$grpMode.Location = [System.Drawing.Point]::new(10, 305 + $topOffset)
+$form.Controls.Add($grpMode)
+
+$rbModeVideo = New-Object System.Windows.Forms.RadioButton
+$rbModeVideo.Text = 'Vídeo'
+$rbModeVideo.AutoSize = $true
+$rbModeVideo.Location = '10,20'
+$rbModeVideo.Checked = $true
+$grpMode.Controls.Add($rbModeVideo)
+
+$rbModeAudio = New-Object System.Windows.Forms.RadioButton
+$rbModeAudio.Text = 'Áudio'
+$rbModeAudio.AutoSize = $true
+$rbModeAudio.Location = '10,42'
+$grpMode.Controls.Add($rbModeAudio)
+
+if ($settings.downloadMode -and $settings.downloadMode.ToString().ToLower() -eq 'audio') {
+  $rbModeAudio.Checked = $true
+  $rbModeVideo.Checked = $false
+}
+
 $grp = New-Object System.Windows.Forms.GroupBox
 $grp.Text = 'Qualidade'
 $grp.Size = '220,70'
-$grp.Location = [System.Drawing.Point]::new(10, 305 + $topOffset)
+$grp.Location = [System.Drawing.Point]::new(10, $grpMode.Bottom + 8)
 $form.Controls.Add($grp)
 
 $rb720 = New-Object System.Windows.Forms.RadioButton
@@ -281,6 +327,53 @@ if ($settings.cookiesBrowser) {
   if ($match) { $cmbCookies.SelectedItem = $match }
 }
 $form.Controls.Add($cmbCookies)
+
+$lblAudioFormat = New-Object System.Windows.Forms.Label
+$lblAudioFormat.Text = 'Formato de áudio:'
+$lblAudioFormat.AutoSize = $true
+$form.Controls.Add($lblAudioFormat)
+
+$cmbAudioFormat = New-Object System.Windows.Forms.ComboBox
+$cmbAudioFormat.DropDownStyle = 'DropDownList'
+[void]$cmbAudioFormat.Items.AddRange(@('mp3', 'wav', 'flac'))
+$cmbAudioFormat.SelectedIndex = 0
+if ($settings.audioFormat) {
+  $match = $cmbAudioFormat.Items | Where-Object { $_.ToString().ToLower() -eq $settings.audioFormat.ToString().ToLower() } | Select-Object -First 1
+  if ($match) { $cmbAudioFormat.SelectedItem = $match }
+}
+$form.Controls.Add($cmbAudioFormat)
+
+$grpAudioQuality = New-Object System.Windows.Forms.GroupBox
+$grpAudioQuality.Text = 'Qualidade do áudio'
+$grpAudioQuality.Size = '220,92'
+$form.Controls.Add($grpAudioQuality)
+
+$rbAudioLow = New-Object System.Windows.Forms.RadioButton
+$rbAudioLow.Text = 'Baixa'
+$rbAudioLow.AutoSize = $true
+$rbAudioLow.Location = '10,20'
+$grpAudioQuality.Controls.Add($rbAudioLow)
+
+$rbAudioStandard = New-Object System.Windows.Forms.RadioButton
+$rbAudioStandard.Text = 'Padrão (recomendado)'
+$rbAudioStandard.AutoSize = $true
+$rbAudioStandard.Location = '10,42'
+$rbAudioStandard.Checked = $true
+$grpAudioQuality.Controls.Add($rbAudioStandard)
+
+$rbAudioHq = New-Object System.Windows.Forms.RadioButton
+$rbAudioHq.Text = 'HQ'
+$rbAudioHq.AutoSize = $true
+$rbAudioHq.Location = '10,64'
+$grpAudioQuality.Controls.Add($rbAudioHq)
+
+if ($settings.audioQuality) {
+  switch ($settings.audioQuality.ToString().ToLower()) {
+    'low' { $rbAudioLow.Checked = $true; $rbAudioStandard.Checked = $false }
+    'hq' { $rbAudioHq.Checked = $true; $rbAudioStandard.Checked = $false }
+    default { }
+  }
+}
 
 $chkShowWarnings = New-Object System.Windows.Forms.CheckBox
 $chkShowWarnings.Text = 'Mostrar avisos (avancado)'
@@ -324,7 +417,9 @@ $form.Controls.Add($btnClose)
 
 function Update-Layout {
   $form.SuspendLayout()
+  $grpMode.SuspendLayout()
   $grp.SuspendLayout()
+  $grpAudioQuality.SuspendLayout()
 
   $txtUrls.Width = $form.ClientSize.Width - 20
   $btnUpdate.Location = [System.Drawing.Point]::new($form.ClientSize.Width - $btnUpdate.Width - 10, $btnUpdate.Location.Y)
@@ -335,16 +430,38 @@ function Update-Layout {
   $txtFolder.Location = [System.Drawing.Point]::new($btnFolder.Right + 10, $btnFolder.Top)
   $txtFolder.Width = $form.ClientSize.Width - $txtFolder.Left - 10
 
+  $baseY = $txtFolder.Bottom + 10
+  $grpMode.Location = [System.Drawing.Point]::new(10, $baseY)
+  $rbModeVideo.Location = [System.Drawing.Point]::new(10, 20)
+  $rbModeAudio.Location = [System.Drawing.Point]::new(10, $rbModeVideo.Location.Y + $rbModeVideo.PreferredSize.Height + 6)
+  $grpMode.Height = $rbModeAudio.Location.Y + $rbModeAudio.PreferredSize.Height + 10
+
+  $grp.Location = [System.Drawing.Point]::new(10, $grpMode.Bottom + 8)
+
   $rb720.Location = [System.Drawing.Point]::new(10, 20)
   $rb1080.Location = [System.Drawing.Point]::new(10, $rb720.Location.Y + $rb720.PreferredSize.Height + 6)
   $grp.Height = $rb1080.Location.Y + $rb1080.PreferredSize.Height + 10
 
-  $lblCookies.Location = [System.Drawing.Point]::new($grp.Right + 20, $grp.Top + 6)
-  $cmbCookies.Location = [System.Drawing.Point]::new($grp.Right + 20, $lblCookies.Bottom + 4)
+  $rightX = $grp.Right + 20
+  $lblCookies.Location = [System.Drawing.Point]::new($rightX, $grpMode.Top + 6)
+  $cmbCookies.Location = [System.Drawing.Point]::new($rightX, $lblCookies.Bottom + 4)
   $cmbCookies.Width = $form.ClientSize.Width - $cmbCookies.Left - 10
   if ($cmbCookies.Width -lt 180) { $cmbCookies.Width = 180 }
 
+  $lblAudioFormat.Location = [System.Drawing.Point]::new($rightX, $cmbCookies.Bottom + 10)
+  $cmbAudioFormat.Location = [System.Drawing.Point]::new($rightX, $lblAudioFormat.Bottom + 4)
+  $cmbAudioFormat.Width = $cmbCookies.Width
+
+  $grpAudioQuality.Location = [System.Drawing.Point]::new($rightX, $cmbAudioFormat.Bottom + 10)
+  $grpAudioQuality.Width = $cmbAudioFormat.Width
+  $rbAudioLow.Location = [System.Drawing.Point]::new(10, 20)
+  $rbAudioStandard.Location = [System.Drawing.Point]::new(10, $rbAudioLow.Location.Y + $rbAudioLow.PreferredSize.Height + 6)
+  $rbAudioHq.Location = [System.Drawing.Point]::new(10, $rbAudioStandard.Location.Y + $rbAudioStandard.PreferredSize.Height + 6)
+  $grpAudioQuality.Height = $rbAudioHq.Location.Y + $rbAudioHq.PreferredSize.Height + 10
+
   $panelBottom = [Math]::Max($grp.Bottom, $cmbCookies.Bottom)
+  $panelBottom = [Math]::Max($panelBottom, $cmbAudioFormat.Bottom)
+  $panelBottom = [Math]::Max($panelBottom, $grpAudioQuality.Bottom)
   $chkShowWarnings.Location = [System.Drawing.Point]::new(10, $panelBottom + 6)
 
   $progress.Location = [System.Drawing.Point]::new(10, $chkShowWarnings.Bottom + 10)
@@ -360,7 +477,9 @@ function Update-Layout {
     $form.ClientSize = New-Object System.Drawing.Size($form.ClientSize.Width, $requiredHeight)
   }
 
+  $grpAudioQuality.ResumeLayout($false)
   $grp.ResumeLayout($false)
+  $grpMode.ResumeLayout($false)
   $form.ResumeLayout($false)
 }
 
@@ -368,10 +487,42 @@ Update-Layout
 $form.Add_Shown({ Update-Layout })
 $form.Add_Resize({ Update-Layout })
 
+function Apply-DownloadModeState {
+  $isAudio = $rbModeAudio.Checked
+  $grpMode.Enabled = $true
+  $rbModeVideo.Enabled = $true
+  $rbModeAudio.Enabled = $true
+
+  $grp.Enabled = -not $isAudio
+  $rb720.Enabled = -not $isAudio
+  $rb1080.Enabled = -not $isAudio
+
+  $lblAudioFormat.Enabled = $isAudio
+  $cmbAudioFormat.Enabled = $isAudio
+  $grpAudioQuality.Enabled = $isAudio
+  $rbAudioLow.Enabled = $isAudio
+  $rbAudioStandard.Enabled = $isAudio
+  $rbAudioHq.Enabled = $isAudio
+}
+
+$rbModeVideo.Add_CheckedChanged({ if ($rbModeVideo.Checked) { Apply-DownloadModeState } })
+$rbModeAudio.Add_CheckedChanged({ if ($rbModeAudio.Checked) { Apply-DownloadModeState } })
+Apply-DownloadModeState
+
 function Set-UiEnabled([bool]$enabled) {
   $txtUrls.Enabled = $enabled
   $btnFolder.Enabled = $enabled
   $txtFolder.Enabled = $enabled
+  $grpMode.Enabled = $enabled
+  $rbModeVideo.Enabled = $enabled
+  $rbModeAudio.Enabled = $enabled
+  $lblAudioFormat.Enabled = $enabled
+  $cmbAudioFormat.Enabled = $enabled
+  $grpAudioQuality.Enabled = $enabled
+  $rbAudioLow.Enabled = $enabled
+  $rbAudioStandard.Enabled = $enabled
+  $rbAudioHq.Enabled = $enabled
+  $grp.Enabled = $enabled
   $rb720.Enabled = $enabled
   $rb1080.Enabled = $enabled
   $cmbCookies.Enabled = $enabled
@@ -380,6 +531,8 @@ function Set-UiEnabled([bool]$enabled) {
   $btnYt.Enabled = $enabled
   $btnUpdate.Enabled = $enabled
   $txtYt.Enabled = $enabled
+
+  if ($enabled) { Apply-DownloadModeState }
 }
 
 function Join-ArgsList([string[]]$argList) {
@@ -487,6 +640,154 @@ $script:updateTargetPath = $null
 $script:updateOutFile = $null
 $script:updateErrFile = $null
 $script:updateLogPath = $null
+
+$script:ffmpegInstallInProgress = $false
+$script:ffmpegInstallProcess = $null
+$script:ffmpegInstallOutFile = $null
+$script:ffmpegInstallErrFile = $null
+$script:ffmpegInstallScriptPath = $null
+$script:ffmpegInstallZipPath = $null
+$script:ffmpegInstallExtractDir = $null
+$script:ffmpegInstallTargetFolder = $null
+$script:pendingStartContext = $null
+
+function Start-DownloadsFromContext([pscustomobject]$ctx) {
+  if (-not $ctx) { return }
+
+  $folder = $ctx.Folder
+  $urls = @($ctx.Urls)
+  $ytPath = $ctx.YtPath
+  $downloadMode = $ctx.DownloadMode
+  $audioFormat = $ctx.AudioFormat
+  $audioQuality = $ctx.AudioQuality
+  $cookiesBrowser = $ctx.CookiesBrowser
+
+  $ffmpegState = Get-FfmpegState $ytPath
+  $forceNoFfmpeg = $ctx.ForceNoFfmpeg -eq $true
+  $useFfmpeg = $false
+  $ffmpegLocation = $null
+
+  if (-not $forceNoFfmpeg) {
+    if ($downloadMode -eq 'audio') {
+      $useFfmpeg = $ffmpegState.Found -and $ffmpegState.FfprobeFound
+    } else {
+      $useFfmpeg = $ffmpegState.Found
+    }
+  }
+
+  if ($downloadMode -eq 'audio' -and -not $useFfmpeg) {
+    $progress.Style = [System.Windows.Forms.ProgressBarStyle]::Blocks
+    Set-UiEnabled $true
+    $btnCancel.Enabled = $false
+    $btnClose.Enabled = $true
+    $status.Text = 'FFmpeg/FFprobe nao encontrados.'
+    [System.Windows.Forms.MessageBox]::Show('Para baixar audio, e necessario FFmpeg + FFprobe. Baixe o FFmpeg portatil e tente novamente.') | Out-Null
+    return
+  }
+
+  if ($useFfmpeg) {
+    if ($downloadMode -eq 'audio') {
+      $ffprobeDir = if ($ffmpegState.FfprobePath) { Split-Path -Path $ffmpegState.FfprobePath -Parent } else { $null }
+      if ($ffprobeDir -and $ffprobeDir -eq $ffmpegState.Dir) { $ffmpegLocation = $ffmpegState.Dir }
+    } else {
+      $ffmpegLocation = $ffmpegState.Dir
+    }
+  }
+
+  $jsRuntime = Get-JsRuntimeInfo
+  $script:showWarnings = $ctx.ShowWarnings -eq $true
+
+  $fmt = $null
+  $height = $ctx.Height
+  if ($downloadMode -eq 'audio') {
+    $fmt = 'ba/b'
+  } else {
+    if ($useFfmpeg) {
+      $fmt = "bv*[height<=$height][ext=mp4]+ba[ext=m4a]/b[height<=$height][ext=mp4]/best[ext=mp4]"
+    } else {
+      $fmt = "b[height<=$height][ext=mp4]/b[height<=$height]/best"
+    }
+  }
+
+  $quality = $ctx.Quality
+  Save-Settings -ytPath $ytPath -folder $folder -quality $quality -cookiesBrowser $cookiesBrowser -downloadMode $downloadMode -audioFormat $audioFormat -audioQuality $audioQuality
+
+  $progress.Minimum = 0
+  $progress.Maximum = $urls.Count
+  $progress.Value = 0
+  $progress.Style = [System.Windows.Forms.ProgressBarStyle]::Blocks
+  $status.Text = 'Iniciando...'
+
+  Set-UiEnabled $false
+  $btnCancel.Enabled = $true
+  $btnClose.Enabled = $false
+
+  $outputTemplate = Join-Path -Path $folder -ChildPath '%(title)s.%(ext)s'
+  $logPath = Join-Path -Path $folder -ChildPath ("yt-gui-log-{0}.txt" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
+
+  $baseArgs = @('-f', $fmt)
+  if ($downloadMode -eq 'audio') {
+    $baseArgs += '-x'
+    $baseArgs += @('--audio-format', $audioFormat)
+    if ($audioFormat -eq 'mp3') {
+      $aq = if ($audioQuality -eq 'low') { '7' } elseif ($audioQuality -eq 'hq') { '0' } else { '5' }
+      $baseArgs += @('--audio-quality', $aq)
+    }
+  }
+
+  $baseArgs += $jsRuntime.Args
+  if ($cookiesBrowser -and $cookiesBrowser -ne 'Nenhum') { $baseArgs += @('--cookies-from-browser', $cookiesBrowser) }
+  if ($useFfmpeg -and $ffmpegLocation) { $baseArgs += @('--ffmpeg-location', $ffmpegLocation) }
+  if ($downloadMode -eq 'video' -and $useFfmpeg) { $baseArgs += @('--merge-output-format', 'mp4') }
+  if (-not $ctx.ShowWarnings) { $baseArgs += '--no-warnings' }
+  $baseArgs += @('--restrict-filenames', '--newline', '-o', $outputTemplate)
+
+  $ffmpegSource = if ($forceNoFfmpeg) { 'disabled' } else { $ffmpegState.Source }
+  try {
+    "yt-gui log - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" | Set-Content -Path $logPath -Encoding UTF8
+    $script:lastLogPath = $logPath
+    $startInfo = @(
+      "Start: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
+      "YtPath: $ytPath",
+      "DownloadMode: $downloadMode",
+      "AudioFormat: $audioFormat",
+      "AudioQuality: $audioQuality",
+      "Ffmpeg: $($useFfmpeg)",
+      "FfmpegSource: $ffmpegSource",
+      "FfmpegLocation: $ffmpegLocation",
+      "JsRuntime: $($jsRuntime.Name)",
+      "CookiesBrowser: $cookiesBrowser",
+      "ShowWarnings: $($ctx.ShowWarnings)",
+      "Urls: $($urls.Count)",
+      "Output: $outputTemplate",
+      "Args: $($baseArgs -join ' ')",
+      ''
+    ) -join "`r`n"
+    Write-Log $logPath $startInfo
+  } catch {
+    $fallback = Join-Path -Path $env:TEMP -ChildPath ("yt-gui-log-{0}.txt" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
+    try {
+      "yt-gui log - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" | Set-Content -Path $fallback -Encoding UTF8
+      $script:lastLogPath = $fallback
+      $logPath = $fallback
+      Write-Log $logPath "Log gravado em %TEMP%: $fallback"
+    } catch {
+      $script:lastLogPath = $null
+      $logPath = $null
+      [System.Windows.Forms.MessageBox]::Show("Nao foi possivel criar o log no destino nem em %TEMP%.") | Out-Null
+    }
+  }
+
+  $script:downloadQueue = $urls
+  $script:currentIndex = 0
+  $script:results = New-Object System.Collections.Generic.List[object]
+  $script:cancelRequested = $false
+  $script:ytPath = $ytPath
+  $script:outputTemplate = $outputTemplate
+  $script:baseArgs = $baseArgs
+  $script:logPath = $logPath
+  $script:timer.Start()
+}
 
 function Start-DownloadProcess([int]$index) {
   $u = $script:downloadQueue[$index]
@@ -693,7 +994,10 @@ $script:updateTimer.Add_Tick({
     $txtYt.Text = $script:updateTargetPath
     $quality = if ($rb720.Checked) { '720' } else { '1080' }
     $cookiesBrowser = if ($cmbCookies.SelectedItem) { $cmbCookies.SelectedItem.ToString() } else { 'Nenhum' }
-    Save-Settings -ytPath $txtYt.Text -folder $txtFolder.Text.Trim() -quality $quality -cookiesBrowser $cookiesBrowser
+    $downloadMode = if ($rbModeAudio.Checked) { 'audio' } else { 'video' }
+    $audioFormat = if ($cmbAudioFormat.SelectedItem) { $cmbAudioFormat.SelectedItem.ToString() } else { 'mp3' }
+    $audioQuality = if ($rbAudioLow.Checked) { 'low' } elseif ($rbAudioHq.Checked) { 'hq' } else { 'standard' }
+    Save-Settings -ytPath $txtYt.Text -folder $txtFolder.Text.Trim() -quality $quality -cookiesBrowser $cookiesBrowser -downloadMode $downloadMode -audioFormat $audioFormat -audioQuality $audioQuality
     $status.Text = 'yt-dlp atualizado.'
     [System.Windows.Forms.MessageBox]::Show('yt-dlp atualizado com sucesso.') | Out-Null
   } else {
@@ -711,6 +1015,181 @@ $script:updateTimer.Add_Tick({
   $progress.Style = [System.Windows.Forms.ProgressBarStyle]::Blocks
   Set-UiEnabled $true
   $btnClose.Enabled = $true
+})
+
+function Start-FfmpegPortableInstallAsync([string]$targetFolder) {
+  if ($script:timer.Enabled) { return }
+  if ($script:updateInProgress) { return }
+  if ($script:ffmpegInstallInProgress) { return }
+  if (-not $script:pendingStartContext) { return }
+
+  if (-not $targetFolder -or -not (Test-Path $targetFolder)) {
+    [System.Windows.Forms.MessageBox]::Show('Pasta de destino invalida.') | Out-Null
+    return
+  }
+
+  $ps = Get-Command 'powershell.exe' -ErrorAction SilentlyContinue
+  if (-not $ps) {
+    [System.Windows.Forms.MessageBox]::Show('powershell.exe nao encontrado. Nao foi possivel instalar o FFmpeg.') | Out-Null
+    return
+  }
+
+  $url = 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip'
+  $id = [guid]::NewGuid().ToString('N')
+
+  $script:ffmpegInstallTargetFolder = $targetFolder
+  $script:ffmpegInstallZipPath = Join-Path $env:TEMP ("ffmpeg-$id.zip")
+  $script:ffmpegInstallExtractDir = Join-Path $env:TEMP ("ffmpeg-$id")
+  $script:ffmpegInstallScriptPath = Join-Path $env:TEMP ("yt-gui-ffmpeg-install-$id.ps1")
+  $script:ffmpegInstallOutFile = Join-Path $env:TEMP ("yt-gui-ffmpeg-out-$id.txt")
+  $script:ffmpegInstallErrFile = Join-Path $env:TEMP ("yt-gui-ffmpeg-err-$id.txt")
+
+  $scriptContent = @'
+param(
+  [Parameter(Mandatory=$true)][string]$TargetFolder,
+  [Parameter(Mandatory=$true)][string]$ZipPath,
+  [Parameter(Mandatory=$true)][string]$ExtractDir,
+  [Parameter(Mandatory=$true)][string]$Url
+)
+
+try {
+  if (-not (Test-Path $TargetFolder)) { throw 'Pasta de destino invalida.' }
+  Invoke-WebRequest -Uri $Url -OutFile $ZipPath -UseBasicParsing -TimeoutSec 120
+  Expand-Archive -Path $ZipPath -DestinationPath $ExtractDir -Force
+
+  $ffmpegExe = Get-ChildItem -Path $ExtractDir -Recurse -Filter 'ffmpeg.exe' | Select-Object -First 1
+  $ffprobeExe = Get-ChildItem -Path $ExtractDir -Recurse -Filter 'ffprobe.exe' | Select-Object -First 1
+  if (-not $ffmpegExe -or -not $ffprobeExe) { throw 'ffmpeg.exe e/ou ffprobe.exe nao encontrados no pacote.' }
+
+  Copy-Item -Path $ffmpegExe.FullName -Destination (Join-Path $TargetFolder 'ffmpeg.exe') -Force
+  Copy-Item -Path $ffprobeExe.FullName -Destination (Join-Path $TargetFolder 'ffprobe.exe') -Force
+
+  try { Unblock-File -Path (Join-Path $TargetFolder 'ffmpeg.exe') -ErrorAction SilentlyContinue } catch { }
+  try { Unblock-File -Path (Join-Path $TargetFolder 'ffprobe.exe') -ErrorAction SilentlyContinue } catch { }
+
+  'ok'
+  exit 0
+} catch {
+  $_.Exception.Message
+  exit 1
+} finally {
+  try { if (Test-Path $ZipPath) { Remove-Item -Path $ZipPath -Force -ErrorAction SilentlyContinue } } catch { }
+  try { if (Test-Path $ExtractDir) { Remove-Item -Path $ExtractDir -Recurse -Force -ErrorAction SilentlyContinue } } catch { }
+}
+'@
+
+  try {
+    Set-Content -Path $script:ffmpegInstallScriptPath -Value $scriptContent -Encoding UTF8
+  } catch {
+    [System.Windows.Forms.MessageBox]::Show("Falha ao preparar instalador do FFmpeg: $($_.Exception.Message)") | Out-Null
+    return
+  }
+
+  $script:ffmpegInstallInProgress = $true
+
+  $status.Text = 'Baixando e instalando FFmpeg...'
+  $progress.Style = [System.Windows.Forms.ProgressBarStyle]::Marquee
+  $progress.MarqueeAnimationSpeed = 30
+  $progress.Value = 0
+
+  Set-UiEnabled $false
+  $btnCancel.Enabled = $false
+  $btnClose.Enabled = $false
+
+  $argsList = @(
+    '-NoProfile',
+    '-ExecutionPolicy', 'Bypass',
+    '-File', $script:ffmpegInstallScriptPath,
+    '-TargetFolder', $targetFolder,
+    '-ZipPath', $script:ffmpegInstallZipPath,
+    '-ExtractDir', $script:ffmpegInstallExtractDir,
+    '-Url', $url
+  )
+  $argString = Join-ArgsList $argsList
+
+  try {
+    $script:ffmpegInstallProcess = Start-Process -FilePath $ps.Source -ArgumentList $argString -PassThru -NoNewWindow -RedirectStandardOutput $script:ffmpegInstallOutFile -RedirectStandardError $script:ffmpegInstallErrFile
+  } catch {
+    $script:ffmpegInstallInProgress = $false
+    Set-UiEnabled $true
+    $btnClose.Enabled = $true
+    $progress.Style = [System.Windows.Forms.ProgressBarStyle]::Blocks
+    [System.Windows.Forms.MessageBox]::Show("Falha ao iniciar instalacao do FFmpeg: $($_.Exception.Message)") | Out-Null
+    return
+  }
+
+  $script:ffmpegInstallTimer.Start()
+}
+
+$script:ffmpegInstallTimer = New-Object System.Windows.Forms.Timer
+$script:ffmpegInstallTimer.Interval = 500
+$script:ffmpegInstallTimer.Add_Tick({
+  if (-not $script:ffmpegInstallInProgress) { $script:ffmpegInstallTimer.Stop(); return }
+  if (-not $script:ffmpegInstallProcess) { return }
+  if (-not $script:ffmpegInstallProcess.HasExited) { return }
+
+  $script:ffmpegInstallTimer.Stop()
+  $exitCode = $script:ffmpegInstallProcess.ExitCode
+  $out = ''
+  $err = ''
+  try { if (Test-Path $script:ffmpegInstallOutFile) { $out = Get-Content -Path $script:ffmpegInstallOutFile -Raw } } catch { }
+  try { if (Test-Path $script:ffmpegInstallErrFile) { $err = Get-Content -Path $script:ffmpegInstallErrFile -Raw } } catch { }
+  $output = ($out + "`r`n" + $err).Trim()
+
+  $ffmpegOk = $false
+  try {
+    $ffmpegOk = (Test-Path (Join-Path $script:ffmpegInstallTargetFolder 'ffmpeg.exe')) -and (Test-Path (Join-Path $script:ffmpegInstallTargetFolder 'ffprobe.exe'))
+  } catch { }
+
+  $success = $exitCode -eq 0 -and $ffmpegOk
+
+  try { if ($script:ffmpegInstallOutFile) { Remove-Item -Path $script:ffmpegInstallOutFile -ErrorAction SilentlyContinue } } catch { }
+  try { if ($script:ffmpegInstallErrFile) { Remove-Item -Path $script:ffmpegInstallErrFile -ErrorAction SilentlyContinue } } catch { }
+  try { if ($script:ffmpegInstallScriptPath) { Remove-Item -Path $script:ffmpegInstallScriptPath -ErrorAction SilentlyContinue } } catch { }
+
+  $script:ffmpegInstallOutFile = $null
+  $script:ffmpegInstallErrFile = $null
+  $script:ffmpegInstallScriptPath = $null
+  $script:ffmpegInstallZipPath = $null
+  $script:ffmpegInstallExtractDir = $null
+  $script:ffmpegInstallProcess = $null
+  $script:ffmpegInstallInProgress = $false
+
+  $ctx = $script:pendingStartContext
+  $script:pendingStartContext = $null
+
+  if ($success) {
+    $status.Text = 'FFmpeg instalado. Iniciando...'
+    $progress.Style = [System.Windows.Forms.ProgressBarStyle]::Blocks
+    if ($ctx) {
+      Start-DownloadsFromContext $ctx
+    } else {
+      Set-UiEnabled $true
+      $btnCancel.Enabled = $false
+      $btnClose.Enabled = $true
+      $status.Text = 'Pronto.'
+    }
+    return
+  }
+
+  $msg = if ($output) { $output } else { "Falha ao baixar/instalar FFmpeg. ExitCode: $exitCode" }
+
+  if ($ctx -and $ctx.AllowWithoutFfmpeg -eq $true) {
+    $res = [System.Windows.Forms.MessageBox]::Show("Falha ao baixar FFmpeg: $msg`r`nContinuar sem FFmpeg?", 'FFmpeg', [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Warning)
+    if ($res -eq [System.Windows.Forms.DialogResult]::Yes) {
+      $ctx.ForceNoFfmpeg = $true
+      Start-DownloadsFromContext $ctx
+      return
+    }
+  } else {
+    [System.Windows.Forms.MessageBox]::Show("Falha ao baixar FFmpeg: $msg", 'FFmpeg', [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning) | Out-Null
+  }
+
+  $progress.Style = [System.Windows.Forms.ProgressBarStyle]::Blocks
+  Set-UiEnabled $true
+  $btnCancel.Enabled = $false
+  $btnClose.Enabled = $true
+  $status.Text = 'Pronto.'
 })
 
 $btnFolder.Add_Click({
@@ -731,6 +1210,9 @@ $btnUpdate.Add_Click({
 
 $btnStart.Add_Click({
  if ($script:timer.Enabled) { return }
+ if ($script:updateInProgress) { return }
+ if ($script:ffmpegInstallInProgress) { return }
+
  $folder = $txtFolder.Text.Trim()
  if (!(Test-Path $folder)) { [System.Windows.Forms.MessageBox]::Show('Escolha uma pasta valida.'); return }
  $urls = @($txtUrls.Lines | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
@@ -742,12 +1224,51 @@ $btnStart.Add_Click({
  }
  $txtYt.Text = $ytPath
 
- $ffmpegState = Get-FfmpegState $ytPath
- $useFfmpeg = $ffmpegState.Found
- $ffmpegLocation = if ($useFfmpeg) { $ffmpegState.Dir } else { $null }
- $ffmpegSource = $ffmpegState.Source
+ $downloadMode = if ($rbModeAudio.Checked) { 'audio' } else { 'video' }
+ $audioFormat = if ($cmbAudioFormat.SelectedItem) { $cmbAudioFormat.SelectedItem.ToString() } else { 'mp3' }
+ $audioQuality = if ($rbAudioLow.Checked) { 'low' } elseif ($rbAudioHq.Checked) { 'hq' } else { 'standard' }
+ $cookiesBrowser = if ($cmbCookies.SelectedItem) { $cmbCookies.SelectedItem.ToString() } else { 'Nenhum' }
+ $height = if ($rb720.Checked) { 720 } else { 1080 }
+ $quality = if ($rb720.Checked) { '720' } else { '1080' }
 
- if (-not $useFfmpeg) {
+ $ctx = [pscustomobject]@{
+   Folder = $folder
+   Urls = $urls
+   YtPath = $ytPath
+   DownloadMode = $downloadMode
+   AudioFormat = $audioFormat
+   AudioQuality = $audioQuality
+   CookiesBrowser = $cookiesBrowser
+   ShowWarnings = $chkShowWarnings.Checked
+   Height = $height
+   Quality = $quality
+   ForceNoFfmpeg = $false
+   AllowWithoutFfmpeg = ($downloadMode -eq 'video')
+ }
+
+ $ffmpegState = Get-FfmpegState $ytPath
+ $installTarget = Split-Path -Path $ytPath -Parent
+
+ if ($downloadMode -eq 'audio') {
+   if (-not ($ffmpegState.Found -and $ffmpegState.FfprobeFound)) {
+     $msg = @(
+       'Para baixar apenas o audio (mp3/wav/flac), e necessario FFmpeg + FFprobe.',
+       '',
+       'Deseja baixar o FFmpeg portatil para a mesma pasta do yt-dlp.exe?'
+     ) -join "`r`n"
+     $choice = [System.Windows.Forms.MessageBox]::Show($msg, 'FFmpeg', [System.Windows.Forms.MessageBoxButtons]::YesNoCancel, [System.Windows.Forms.MessageBoxIcon]::Information)
+     if ($choice -ne [System.Windows.Forms.DialogResult]::Yes) { return }
+
+     $script:pendingStartContext = $ctx
+     Start-FfmpegPortableInstallAsync -targetFolder $installTarget
+     return
+   }
+
+   Start-DownloadsFromContext $ctx
+   return
+ }
+
+ if (-not $ffmpegState.Found) {
    $msg = @(
      'FFmpeg melhora a qualidade e permite juntar audio+video em um unico MP4.',
      'Sem ele, o download pode sair em qualidade menor.',
@@ -756,96 +1277,17 @@ $btnStart.Add_Click({
    ) -join "`r`n"
    $choice = [System.Windows.Forms.MessageBox]::Show($msg, 'FFmpeg', [System.Windows.Forms.MessageBoxButtons]::YesNoCancel, [System.Windows.Forms.MessageBoxIcon]::Information)
    if ($choice -eq [System.Windows.Forms.DialogResult]::Yes) {
-     $status.Text = 'Baixando ffmpeg...'
-     $form.Refresh()
-     $install = Install-FfmpegPortable -targetFolder $ffmpegState.Dir
-     if ($install.Success) {
-       $useFfmpeg = $true
-       $ffmpegLocation = $ffmpegState.Dir
-       $ffmpegSource = 'downloaded'
-       [System.Windows.Forms.MessageBox]::Show('ffmpeg baixado com sucesso.') | Out-Null
-     } else {
-       $res = [System.Windows.Forms.MessageBox]::Show("Falha ao baixar ffmpeg: $($install.Message)`r`nContinuar sem ffmpeg?", 'FFmpeg', [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Warning)
-       if ($res -ne [System.Windows.Forms.DialogResult]::Yes) { return }
-     }
+     $script:pendingStartContext = $ctx
+     Start-FfmpegPortableInstallAsync -targetFolder $installTarget
+     return
    } elseif ($choice -eq [System.Windows.Forms.DialogResult]::Cancel) {
      return
+   } else {
+     $ctx.ForceNoFfmpeg = $true
    }
  }
 
- $jsRuntime = Get-JsRuntimeInfo
- $script:showWarnings = $chkShowWarnings.Checked
- $cookiesBrowser = if ($cmbCookies.SelectedItem) { $cmbCookies.SelectedItem.ToString() } else { 'Nenhum' }
-
- $height = if ($rb720.Checked) { 720 } else { 1080 }
- if ($useFfmpeg) {
-   $fmt = "bv*[height<=$height][ext=mp4]+ba[ext=m4a]/b[height<=$height][ext=mp4]/best[ext=mp4]"
- } else {
-   $fmt = "b[height<=$height][ext=mp4]/b[height<=$height]/best"
- }
- $quality = if ($rb720.Checked) { '720' } else { '1080' }
- Save-Settings -ytPath $txtYt.Text -folder $folder -quality $quality -cookiesBrowser $cookiesBrowser
-
- $progress.Minimum = 0
- $progress.Maximum = $urls.Count
- $progress.Value = 0
- $progress.Style = [System.Windows.Forms.ProgressBarStyle]::Blocks
- $status.Text = 'Iniciando...'
-
- Set-UiEnabled $false
- $btnCancel.Enabled = $true
- $btnClose.Enabled = $false
-
- $outputTemplate = Join-Path -Path $folder -ChildPath '%(title)s.%(ext)s'
- $logPath = Join-Path -Path $folder -ChildPath ("yt-gui-log-{0}.txt" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
- $baseArgs = @('-f', $fmt)
- $baseArgs += $jsRuntime.Args
- if ($cookiesBrowser -and $cookiesBrowser -ne 'Nenhum') { $baseArgs += @('--cookies-from-browser', $cookiesBrowser) }
- if ($useFfmpeg -and $ffmpegLocation) { $baseArgs += @('--ffmpeg-location', $ffmpegLocation) }
- if ($useFfmpeg) { $baseArgs += @('--merge-output-format', 'mp4') }
- if (-not $chkShowWarnings.Checked) { $baseArgs += '--no-warnings' }
- $baseArgs += @('--restrict-filenames', '--newline', '-o', $outputTemplate)
- try {
-   "yt-gui log - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" | Set-Content -Path $logPath -Encoding UTF8
-   $script:lastLogPath = $logPath
-    $startInfo = @(
-      "Start: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
-      "YtPath: $ytPath",
-      "Ffmpeg: $($useFfmpeg)",
-      "FfmpegSource: $ffmpegSource",
-      "FfmpegLocation: $ffmpegLocation",
-      "JsRuntime: $($jsRuntime.Name)",
-      "CookiesBrowser: $cookiesBrowser",
-      "ShowWarnings: $($chkShowWarnings.Checked)",
-      "Urls: $($urls.Count)",
-      "Output: $outputTemplate",
-      "Args: $($baseArgs -join ' ')",
-      ''
-    ) -join "`r`n"
-    Write-Log $logPath $startInfo
- } catch {
-   $fallback = Join-Path -Path $env:TEMP -ChildPath ("yt-gui-log-{0}.txt" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
-   try {
-     "yt-gui log - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" | Set-Content -Path $fallback -Encoding UTF8
-     $script:lastLogPath = $fallback
-     $logPath = $fallback
-     Write-Log $logPath "Log gravado em %TEMP%: $fallback"
-   } catch {
-     $script:lastLogPath = $null
-     $logPath = $null
-     [System.Windows.Forms.MessageBox]::Show("Nao foi possivel criar o log no destino nem em %TEMP%.") | Out-Null
-   }
- }
-
- $script:downloadQueue = $urls
- $script:currentIndex = 0
- $script:results = New-Object System.Collections.Generic.List[object]
- $script:cancelRequested = $false
- $script:ytPath = $ytPath
- $script:outputTemplate = $outputTemplate
- $script:baseArgs = $baseArgs
- $script:logPath = $logPath
- $script:timer.Start()
+ Start-DownloadsFromContext $ctx
 })
 
 $btnCancel.Add_Click({
@@ -858,6 +1300,17 @@ $btnCancel.Add_Click({
 
 $form.Add_FormClosing({
  try {
+   if ($script:ffmpegInstallInProgress) {
+     $resFfmpeg = [System.Windows.Forms.MessageBox]::Show('Ha instalacao do FFmpeg em andamento. Deseja cancelar e sair?', 'Confirmar', [System.Windows.Forms.MessageBoxButtons]::YesNo)
+     if ($resFfmpeg -ne [System.Windows.Forms.DialogResult]::Yes) {
+       $args[1].Cancel = $true
+       return
+     }
+     try { if ($script:ffmpegInstallProcess -and -not $script:ffmpegInstallProcess.HasExited) { Stop-Process -Id $script:ffmpegInstallProcess.Id -Force -ErrorAction SilentlyContinue } } catch { }
+     $script:ffmpegInstallInProgress = $false
+     $script:pendingStartContext = $null
+     $script:ffmpegInstallTimer.Stop()
+   }
    if ($script:updateInProgress) {
      $resUpdate = [System.Windows.Forms.MessageBox]::Show('Ha atualizacao em andamento. Deseja cancelar e sair?', 'Confirmar', [System.Windows.Forms.MessageBoxButtons]::YesNo)
      if ($resUpdate -ne [System.Windows.Forms.DialogResult]::Yes) {

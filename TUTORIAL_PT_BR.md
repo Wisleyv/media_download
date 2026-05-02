@@ -14,15 +14,24 @@ Este guia ajuda usuarios nao tecnicos a executar o YT-DLP GUI no Windows.
 ## 3) Configurar
 - Cole as URLs (uma por linha) no campo principal.
 - Clique em "Escolher Pasta" e selecione onde salvar os arquivos.
+- Em "Tipo de download", escolha:
+	- "Vídeo": baixa em MP4 (com qualidade 720p/1080p)
+	- "Áudio": baixa apenas o audio (mp3/wav/flac)
 - Se o yt-dlp.exe nao estiver encontrado, clique em "Baixar/Atualizar" para baixar automaticamente.
 
-## 4) FFmpeg (recomendado)
-- O FFmpeg melhora a qualidade e junta audio+video em um unico MP4.
+## 4) FFmpeg (recomendado / obrigatorio no audio)
+- No modo "Vídeo": o FFmpeg melhora a qualidade e junta audio+video em um unico MP4.
+- No modo "Áudio": e necessario ter FFmpeg + FFprobe para converter para mp3/wav/flac.
 - Se nao estiver instalado, o app oferece baixar o FFmpeg portatil na pasta do yt-dlp.exe.
-- Sem FFmpeg, o download usa um arquivo unico de qualidade menor.
+- Enquanto baixa/extrai, a barra de progresso fica animada (o app nao parece travado).
 
 ## 5) Baixar
-- Escolha a qualidade (720p ou 1080p).
+- Se estiver em "Vídeo": escolha a qualidade (720p ou 1080p).
+- Se estiver em "Áudio":
+	- Escolha o formato (mp3, wav ou flac)
+	- Escolha a qualidade (Baixa / Padrao / HQ)
+		- Para mp3: HQ=0, Padrao=5, Baixa=7 (equivale ao `--audio-quality` do yt-dlp)
+		- Para wav/flac: a qualidade e lossless/uncompressed, entao o preset nao muda muito
 - Clique em "Baixar Tudo".
 - Acompanhe o status e o progresso na tela.
 
