@@ -1,4 +1,4 @@
-# media_download
+# BMD | Baixe Mídias Digitais
 
 Simple Windows GUI for yt-dlp downloads, focused on easy use by non-technical users.
 

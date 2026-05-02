@@ -197,7 +197,7 @@ $script:closeAfterCancel = $false
 $script:lastLogPath = $null
 
 $form = New-Object System.Windows.Forms.Form
-$form.Text = 'YT-DLP Downloader - PowerPoint Ready'
+$form.Text = 'BMD | Baixe Mídias Digitais'
 $form.Size = New-Object System.Drawing.Size(760,560)
 $form.StartPosition = 'CenterScreen'
 $form.AutoScaleMode = [System.Windows.Forms.AutoScaleMode]::Dpi
