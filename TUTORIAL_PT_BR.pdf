@@ -1,0 +1,110 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 2201 >>
+stream
+BT
+/F1 12 Tf
+72 760 Td
+(Tutorial Passo-a-Passo \\(PT-BR\\)) Tj
+0 -14 Td
+0 -14 Td
+(Este guia ajuda usuarios nao tecnicos a executar o YT-DLP GUI no Windows.) Tj
+0 -14 Td
+0 -14 Td
+(1\\) Baixar o pacote) Tj
+0 -14 Td
+(- Acesse a pagina de releases no GitHub do projeto.) Tj
+0 -14 Td
+(- Baixe o arquivo .zip mais recente.) Tj
+0 -14 Td
+(- Extraia o .zip em uma pasta simples \\(exemplo: C:\\\\yt-dlp\\).) Tj
+0 -14 Td
+0 -14 Td
+(2\\) Executar) Tj
+0 -14 Td
+(- De duplo clique em yt-gui.bat.) Tj
+0 -14 Td
+(- Se o Windows SmartScreen aparecer, clique em "Mais informacoes" e depois em "Executar assim mesmo".) Tj
+0 -14 Td
+0 -14 Td
+(3\\) Configurar) Tj
+0 -14 Td
+(- Cole as URLs \\(uma por linha\\) no campo principal.) Tj
+0 -14 Td
+(- Clique em "Escolher Pasta" e selecione onde salvar os arquivos.) Tj
+0 -14 Td
+(- Se o yt-dlp.exe nao estiver encontrado, clique em "Baixar/Atualizar" para baixar automaticamente.) Tj
+0 -14 Td
+0 -14 Td
+(4\\) FFmpeg \\(recomendado\\)) Tj
+0 -14 Td
+(- O FFmpeg melhora a qualidade e junta audio+video em um unico MP4.) Tj
+0 -14 Td
+(- Se nao estiver instalado, o app oferece baixar o FFmpeg portatil na pasta do yt-dlp.exe.) Tj
+0 -14 Td
+(- Sem FFmpeg, o download usa um arquivo unico de qualidade menor.) Tj
+0 -14 Td
+0 -14 Td
+(5\\) Baixar) Tj
+0 -14 Td
+(- Escolha a qualidade \\(720p ou 1080p\\).) Tj
+0 -14 Td
+(- Clique em "Baixar Tudo".) Tj
+0 -14 Td
+(- Acompanhe o status e o progresso na tela.) Tj
+0 -14 Td
+0 -14 Td
+(6\\) Avisos \\(opcional\\)) Tj
+0 -14 Td
+(- Por padrao, os avisos tecnicos ficam ocultos.) Tj
+0 -14 Td
+(- Marque "Mostrar avisos \\(avancado\\)" para ver detalhes no log.) Tj
+0 -14 Td
+0 -14 Td
+(7\\) Logs e configuracoes) Tj
+0 -14 Td
+(- Os logs sao gravados na pasta de saida.) Tj
+0 -14 Td
+(- As configuracoes ficam em %APPDATA%\\\\yt-gui\\\\settings.json.) Tj
+0 -14 Td
+0 -14 Td
+(Solucao de problemas) Tj
+0 -14 Td
+(- "yt-dlp.exe nao encontrado": use o botao "Baixar/Atualizar" ou selecione o arquivo manualmente.) Tj
+0 -14 Td
+(- Qualidade baixa: instale o FFmpeg quando o app oferecer.) Tj
+0 -14 Td
+(- Antivirus bloqueando: adicione uma excecao para a pasta onde esta o programa.) Tj
+0 -14 Td
+(- Falha em video especifico: tente outro link para testar.) Tj
+0 -14 Td
+ET
+
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000002494 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+2564
+%%EOF
+

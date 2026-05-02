@@ -32,13 +32,14 @@ function Get-Settings {
   return [pscustomobject]@{}
 }
 
-function Save-Settings([string]$ytPath, [string]$folder, [string]$quality) {
+function Save-Settings([string]$ytPath, [string]$folder, [string]$quality, [string]$cookiesBrowser) {
   $dir = Split-Path -Path $settingsPath -Parent
   if (!(Test-Path $dir)) { New-Item -Path $dir -ItemType Directory -Force | Out-Null }
   [pscustomobject]@{
     ytPath  = $ytPath
     folder  = $folder
     quality = $quality
+    cookiesBrowser = $cookiesBrowser
   } | ConvertTo-Json -Depth 3 | Set-Content -Path $settingsPath -Encoding ASCII
 }
 
@@ -266,6 +267,21 @@ $rb1080.Location = '10,42'
 $grp.Controls.Add($rb1080)
 if ($settings.quality -eq '1080') { $rb1080.Checked = $true; $rb720.Checked = $false }
 
+$lblCookies = New-Object System.Windows.Forms.Label
+$lblCookies.Text = 'Cookies do navegador:'
+$lblCookies.AutoSize = $true
+$form.Controls.Add($lblCookies)
+
+$cmbCookies = New-Object System.Windows.Forms.ComboBox
+$cmbCookies.DropDownStyle = 'DropDownList'
+[void]$cmbCookies.Items.AddRange(@('Nenhum', 'chrome', 'edge', 'firefox', 'brave'))
+$cmbCookies.SelectedIndex = 0
+if ($settings.cookiesBrowser) {
+  $match = $cmbCookies.Items | Where-Object { $_.ToString().ToLower() -eq $settings.cookiesBrowser.ToString().ToLower() } | Select-Object -First 1
+  if ($match) { $cmbCookies.SelectedItem = $match }
+}
+$form.Controls.Add($cmbCookies)
+
 $chkShowWarnings = New-Object System.Windows.Forms.CheckBox
 $chkShowWarnings.Text = 'Mostrar avisos (avancado)'
 $chkShowWarnings.AutoSize = $true
@@ -323,7 +339,13 @@ function Update-Layout {
   $rb1080.Location = [System.Drawing.Point]::new(10, $rb720.Location.Y + $rb720.PreferredSize.Height + 6)
   $grp.Height = $rb1080.Location.Y + $rb1080.PreferredSize.Height + 10
 
-  $chkShowWarnings.Location = [System.Drawing.Point]::new(10, $grp.Bottom + 6)
+  $lblCookies.Location = [System.Drawing.Point]::new($grp.Right + 20, $grp.Top + 6)
+  $cmbCookies.Location = [System.Drawing.Point]::new($grp.Right + 20, $lblCookies.Bottom + 4)
+  $cmbCookies.Width = $form.ClientSize.Width - $cmbCookies.Left - 10
+  if ($cmbCookies.Width -lt 180) { $cmbCookies.Width = 180 }
+
+  $panelBottom = [Math]::Max($grp.Bottom, $cmbCookies.Bottom)
+  $chkShowWarnings.Location = [System.Drawing.Point]::new(10, $panelBottom + 6)
 
   $progress.Location = [System.Drawing.Point]::new(10, $chkShowWarnings.Bottom + 10)
   $progress.Width = $form.ClientSize.Width - 20
@@ -352,6 +374,7 @@ function Set-UiEnabled([bool]$enabled) {
   $txtFolder.Enabled = $enabled
   $rb720.Enabled = $enabled
   $rb1080.Enabled = $enabled
+  $cmbCookies.Enabled = $enabled
   $chkShowWarnings.Enabled = $enabled
   $btnStart.Enabled = $enabled
   $btnYt.Enabled = $enabled
@@ -669,7 +692,8 @@ $script:updateTimer.Add_Tick({
   if ($success) {
     $txtYt.Text = $script:updateTargetPath
     $quality = if ($rb720.Checked) { '720' } else { '1080' }
-    Save-Settings -ytPath $txtYt.Text -folder $txtFolder.Text.Trim() -quality $quality
+    $cookiesBrowser = if ($cmbCookies.SelectedItem) { $cmbCookies.SelectedItem.ToString() } else { 'Nenhum' }
+    Save-Settings -ytPath $txtYt.Text -folder $txtFolder.Text.Trim() -quality $quality -cookiesBrowser $cookiesBrowser
     $status.Text = 'yt-dlp atualizado.'
     [System.Windows.Forms.MessageBox]::Show('yt-dlp atualizado com sucesso.') | Out-Null
   } else {
@@ -751,6 +775,7 @@ $btnStart.Add_Click({
 
  $jsRuntime = Get-JsRuntimeInfo
  $script:showWarnings = $chkShowWarnings.Checked
+ $cookiesBrowser = if ($cmbCookies.SelectedItem) { $cmbCookies.SelectedItem.ToString() } else { 'Nenhum' }
 
  $height = if ($rb720.Checked) { 720 } else { 1080 }
  if ($useFfmpeg) {
@@ -759,7 +784,7 @@ $btnStart.Add_Click({
    $fmt = "b[height<=$height][ext=mp4]/b[height<=$height]/best"
  }
  $quality = if ($rb720.Checked) { '720' } else { '1080' }
- Save-Settings -ytPath $txtYt.Text -folder $folder -quality $quality
+ Save-Settings -ytPath $txtYt.Text -folder $folder -quality $quality -cookiesBrowser $cookiesBrowser
 
  $progress.Minimum = 0
  $progress.Maximum = $urls.Count
@@ -775,6 +800,7 @@ $btnStart.Add_Click({
  $logPath = Join-Path -Path $folder -ChildPath ("yt-gui-log-{0}.txt" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
  $baseArgs = @('-f', $fmt)
  $baseArgs += $jsRuntime.Args
+ if ($cookiesBrowser -and $cookiesBrowser -ne 'Nenhum') { $baseArgs += @('--cookies-from-browser', $cookiesBrowser) }
  if ($useFfmpeg -and $ffmpegLocation) { $baseArgs += @('--ffmpeg-location', $ffmpegLocation) }
  if ($useFfmpeg) { $baseArgs += @('--merge-output-format', 'mp4') }
  if (-not $chkShowWarnings.Checked) { $baseArgs += '--no-warnings' }
@@ -789,6 +815,7 @@ $btnStart.Add_Click({
       "FfmpegSource: $ffmpegSource",
       "FfmpegLocation: $ffmpegLocation",
       "JsRuntime: $($jsRuntime.Name)",
+      "CookiesBrowser: $cookiesBrowser",
       "ShowWarnings: $($chkShowWarnings.Checked)",
       "Urls: $($urls.Count)",
       "Output: $outputTemplate",
