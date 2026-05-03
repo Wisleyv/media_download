@@ -7,6 +7,7 @@ yt-dlp.exe
 
 # Output folders
 videos/
+releases/
 
 # OS
 Thumbs.db
@@ -17,3 +18,9 @@ Desktop.ini
 
 # Local planning docs
 plan.md
+
+# Local workspace 
+yt-dlp.code-workspace
+
+# GitIgnore
+.gitignore

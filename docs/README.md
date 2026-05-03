@@ -1,38 +1,56 @@
-# BMD | Baixe Mídias Digitais
+# CataMedia
 
-Simple Windows GUI for yt-dlp downloads, focused on easy use by non-technical users.
+> **PT-BR:** Interface gráfica simples para Windows que baixa vídeos e músicas do YouTube usando yt-dlp.
+> **EN:** Simple Windows GUI for downloading videos and music from YouTube using yt-dlp.
 
-## Features
-- Paste multiple URLs (one per line)
-- Choose output folder
-- Video downloads: select 720p or 1080p (MP4)
-- Audio-only downloads: choose format (mp3/wav/flac) and quality (Low/Standard/HQ)
-- Responsive UI with cancel
-- Optional download/update of yt-dlp
+---
 
-## Requirements
+## Recursos / Features
+
+- Cole múltiplas URLs (uma por linha) / Paste multiple URLs (one per line)
+- Escolha a pasta de saída / Choose output folder
+- Download de vídeo: 720p ou 1080p (MP4) / Video downloads: 720p or 1080p (MP4)
+- Extração de áudio: mp3, wav ou flac (Baixa/Padrão/HQ) / Audio extraction: mp3, wav or flac (Low/Standard/HQ)
+- Interface responsiva com cancelamento / Responsive UI with cancel
+- Download/atualização automática do yt-dlp / Auto download/update of yt-dlp
+- Troca de idioma na interface (PT-BR / EN) / Language switch in the UI (PT-BR / EN)
+- Executável sem janela de console visível (via `.vbs`) / Run without visible console window (via `.vbs`)
+
+## Requisitos / Requirements
+
 - Windows 10/11
-- Windows PowerShell 5.1 (pre-installed)
-- yt-dlp (can be downloaded from the UI)
-- FFmpeg + FFprobe (recommended for best video results; required for audio-only downloads; the UI can download a portable copy)
+- Windows PowerShell 5.1 (pré-instalado / pre-installed)
+- yt-dlp (pode ser baixado pela interface / can be downloaded from the UI)
+- FFmpeg + FFprobe (recomendado para vídeo; obrigatório para áudio; a interface oferece download portátil / recommended for video; required for audio; the UI can download a portable copy)
 
-## Run
-- Double-click `yt-gui.bat`
-- Or run:
+## Execução / Run
+
+**Sem janela de console / Without console window (recommended):**
+- Dê duplo clique em `catamedia.vbs` / Double-click `catamedia.vbs`
+
+**Com janela de console / With console window (fallback):**
+- Dê duplo clique em `catamedia.bat` / Double-click `catamedia.bat`
+
+**Via linha de comando / Command line:**
 ```powershell
-powershell.exe -STA -File .\yt-gui.ps1
+powershell.exe -STA -File .\catamedia.ps1
 ```
 
-## Tutorial (PT-BR)
-See [TUTORIAL_PT_BR.md](TUTORIAL_PT_BR.md)
+## Tutorial (PT-BR / EN)
 
-## Notes
-- The app stores settings in `%APPDATA%\yt-gui\settings.json`.
-- Logs are created in the chosen output folder when downloads run.
+Veja / See [TUTORIAL.md](TUTORIAL.md)
 
-## Author
-Developed by Wisley Vilela
+## Notas / Notes
+
+- As configurações ficam em / Settings are stored in `%APPDATA%\catamedia\settings.json`
+- Logs são criados na pasta de saída ao rodar downloads / Logs are created in the output folder when downloads run
+- O idioma escolhido é salvo automaticamente / The chosen language is saved automatically
+
+## Autor / Author
+
+Desenvolvido por / Developed by Wisley Vilela
 https://github.com/Wisleyv
 
-## License
+## Licença / License
+
 MIT
