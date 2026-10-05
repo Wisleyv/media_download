@@ -1,4 +1,5 @@
 using System.IO;
+using System.Globalization;
 using System.Windows;
 using CataMedia.Windows;
 
@@ -17,7 +18,7 @@ public partial class App : Application
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
         {
-            MessageBox.Show("Não foi possível abrir o CataMedia. Confira a pasta do aplicativo e os marcadores de distribuição.\n\n" + error.Message,
+            MessageBox.Show(UiStrings.Get("StartupError", CultureInfo.CurrentUICulture.TwoLetterISOLanguageName),
                 "CataMedia", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
         }

@@ -5,9 +5,9 @@ using CataMedia.Core;
 
 namespace CataMedia.Windows;
 
-public sealed class YtDlpVideoDownloadService(IProcessRunner runner) : IVideoDownloadService
+public sealed class YtDlpMediaDownloadService(IProcessRunner runner) : IMediaDownloadService
 {
-    public async Task<VideoDownloadResult> DownloadAsync(VideoDownloadRequest request, DownloadTools tools,
+    public async Task<MediaDownloadResult> DownloadAsync(MediaDownloadRequest request, DownloadTools tools,
         IProgress<DownloadProgress>? progress, CancellationToken cancellationToken)
     {
         request.Validate();
@@ -59,8 +59,9 @@ public sealed class YtDlpVideoDownloadService(IProcessRunner runner) : IVideoDow
 
         var file = Path.GetFullPath(completedFile);
         var relative = Path.GetRelativePath(destination, file);
+        var extension = request.Mode == MediaMode.Video ? ".mp4" : "." + request.AudioFormat.ToString().ToLowerInvariant();
         if (relative == ".." || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) ||
-            Path.IsPathRooted(relative) || !string.Equals(Path.GetExtension(file), ".mp4", StringComparison.OrdinalIgnoreCase) ||
+            Path.IsPathRooted(relative) || !string.Equals(Path.GetExtension(file), extension, StringComparison.OrdinalIgnoreCase) ||
             !File.Exists(file) || new FileInfo(file).Length == 0)
             throw new InvalidDataException("O arquivo MP4 final não pôde ser confirmado. / Final MP4 file could not be confirmed.");
 
@@ -71,7 +72,7 @@ public sealed class YtDlpVideoDownloadService(IProcessRunner runner) : IVideoDow
         try
         {
             var probeExit = await runner.RunAsync(new(Path.Combine(tools.FfmpegDirectory, "ffprobe.exe"),
-                ["-v", "error", "-show_entries", "stream=codec_type,height:format=format_name,duration", "-of", "json", file], destination),
+                ["-v", "error", "-show_entries", "stream=codec_type,codec_name,height:format=format_name,duration", "-of", "json", file], destination),
                 line =>
                 {
                     if (metadata.Length + line.Length > 1_000_000) throw new InvalidDataException("Invalid media metadata.");
@@ -79,7 +80,7 @@ public sealed class YtDlpVideoDownloadService(IProcessRunner runner) : IVideoDow
                 }, _ => { }, probeTimeout.Token).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
             if (probeExit != 0) throw new InvalidDataException("Não foi possível validar o vídeo. / Could not validate video.");
-            try { return ValidateMedia(file, metadata.ToString(), request.MaximumHeight); }
+            try { return ValidateMedia(file, metadata.ToString(), request); }
             catch (Exception error) when (error is JsonException or KeyNotFoundException or InvalidOperationException)
             {
                 throw new InvalidDataException("Metadados de vídeo inválidos. / Invalid video metadata.", error);
@@ -91,19 +92,32 @@ public sealed class YtDlpVideoDownloadService(IProcessRunner runner) : IVideoDow
         }
     }
 
-    public static ProcessCommand CreateCommand(VideoDownloadRequest request, DownloadTools tools, string destination)
+    public static ProcessCommand CreateCommand(MediaDownloadRequest request, DownloadTools tools, string destination)
     {
         request.Validate();
         var height = request.MaximumHeight.ToString(CultureInfo.InvariantCulture);
-        List<string> arguments = ["--ignore-config", "--no-plugin-dirs", "--no-cache-dir", "--no-playlist",
+        List<string> arguments = ["--ignore-config", "--no-plugin-dirs", "--no-cache-dir", "--no-playlist", "--playlist-items", "1",
             "--no-overwrites", "--windows-filenames", "--encoding", "utf-8", "--newline", "--progress", "--no-simulate",
             "--socket-timeout", "15", "--retries", "3", "--no-js-runtimes", "--no-remote-components",
             "--ffmpeg-location", tools.FfmpegDirectory,
-            "-f", $"bv[height<={height}][ext=mp4]+ba[ext=m4a]/b[height<={height}][ext=mp4]",
-            "--merge-output-format", "mp4", "-o", Path.Combine(destination, "%(title).150B [%(id)s].%(ext)s"),
             "--progress-template", "download:CATAMEDIA_PROGRESS:%(progress)j",
             "--progress-template", "postprocess:CATAMEDIA_PROCESSING",
             "--print", "after_move:CATAMEDIA_RESULT:%(filepath)j"];
+        var outputName = "%(title).150B [%(id)s]";
+        if (request.Mode == MediaMode.Video)
+            arguments.AddRange(["-f", $"bv[height<={height}][ext=mp4]+ba[ext=m4a]/b[height<={height}][ext=mp4]", "--merge-output-format", "mp4"]);
+        else
+        {
+            arguments.AddRange(["-f", "ba/b", "-x", "--audio-format", request.AudioFormat.ToString().ToLowerInvariant()]);
+            if (request.AudioFormat == AudioFormat.Mp3)
+            {
+                var quality = request.AudioQuality switch { AudioQuality.Low => "7", AudioQuality.High => "0", _ => "5" };
+                arguments.AddRange(["--audio-quality", quality]);
+                outputName += " - " + request.AudioQuality.ToString().ToLowerInvariant();
+            }
+        }
+        arguments.AddRange(["-o", Path.Combine(destination, outputName + ".%(ext)s")]);
+        if (request.CookiesBrowser is not null) arguments.AddRange(["--cookies-from-browser", request.CookiesBrowser]);
         if (tools.NodePath is not null) arguments.AddRange(["--js-runtimes", "node:" + tools.NodePath]);
         arguments.AddRange(["--", request.Url]);
         return new(tools.YtDlpPath, arguments, destination);
@@ -128,7 +142,7 @@ public sealed class YtDlpVideoDownloadService(IProcessRunner runner) : IVideoDow
         data.TryGetProperty(key, out var field) && field.ValueKind == JsonValueKind.Number && field.TryGetDouble(out var value)
             ? value : 0;
 
-    private static VideoDownloadResult ValidateMedia(string file, string metadata, int maximumHeight)
+    private static MediaDownloadResult ValidateMedia(string file, string metadata, MediaDownloadRequest request)
     {
         using var document = JsonDocument.Parse(metadata);
         var root = document.RootElement;
@@ -136,8 +150,21 @@ public sealed class YtDlpVideoDownloadService(IProcessRunner runner) : IVideoDow
         var video = streams.FirstOrDefault(stream => stream.GetProperty("codec_type").GetString() == "video");
         var hasAudio = streams.Any(stream => stream.GetProperty("codec_type").GetString() == "audio");
         var format = root.GetProperty("format");
+        if (request.Mode == MediaMode.Audio)
+        {
+            var audio = streams.FirstOrDefault(stream => stream.GetProperty("codec_type").GetString() == "audio");
+            var expected = request.AudioFormat.ToString().ToLowerInvariant();
+            var codec = audio.ValueKind == JsonValueKind.Object ? audio.GetProperty("codec_name").GetString() : null;
+            var codecMatches = request.AudioFormat == AudioFormat.Wav ? codec?.StartsWith("pcm_", StringComparison.Ordinal) == true : codec == expected;
+            if (!hasAudio || video.ValueKind == JsonValueKind.Object || !codecMatches ||
+                format.GetProperty("format_name").GetString() != expected ||
+                !double.TryParse(format.GetProperty("duration").GetString(), CultureInfo.InvariantCulture, out var audioDuration) ||
+                !double.IsFinite(audioDuration) || audioDuration <= 0)
+                throw new InvalidDataException("Audio format or content validation failed.");
+            return new(file, 0, audioDuration) { Mode = MediaMode.Audio, AudioFormat = request.AudioFormat };
+        }
         if (video.ValueKind != JsonValueKind.Object || !hasAudio || !video.TryGetProperty("height", out var height) ||
-            !height.TryGetInt32(out var actualHeight) || actualHeight <= 0 || actualHeight > maximumHeight ||
+            !height.TryGetInt32(out var actualHeight) || actualHeight <= 0 || actualHeight > request.MaximumHeight ||
             !(format.GetProperty("format_name").GetString()?.Split(',').Contains("mp4") ?? false) ||
             !double.TryParse(format.GetProperty("duration").GetString(), CultureInfo.InvariantCulture, out var duration) ||
             !double.IsFinite(duration) || duration <= 0)

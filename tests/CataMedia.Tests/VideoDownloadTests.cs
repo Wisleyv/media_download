@@ -26,7 +26,7 @@ public sealed class VideoDownloadTests : IDisposable
     public async Task InvalidLinksNeverStartAProcess(string url)
     {
         var runner = new FakeRunner((_, _, _) => throw new Exception("Must not start"));
-        await Assert.ThrowsAsync<ArgumentException>(() => new YtDlpVideoDownloadService(runner).DownloadAsync(new(url, root, 720), tools, null, default));
+        await Assert.ThrowsAsync<ArgumentException>(() => new YtDlpMediaDownloadService(runner).DownloadAsync(new(url, root, 720), tools, null, default));
     }
 
     [Theory]
@@ -35,12 +35,13 @@ public sealed class VideoDownloadTests : IDisposable
     public void ArgumentsKeepUrlAsDataAndBoundEveryFormatAlternative(int height)
     {
         var url = "https://example.com/video?name=a&other=--exec";
-        var command = YtDlpVideoDownloadService.CreateCommand(new(url, root, height), tools, root);
+        var command = YtDlpMediaDownloadService.CreateCommand(new(url, root, height), tools, root);
         Assert.Equal("--", command.Arguments[^2]);
         Assert.Equal(url, command.Arguments[^1]);
         Assert.Contains("--ignore-config", command.Arguments);
         Assert.Contains("--no-plugin-dirs", command.Arguments);
         Assert.Contains("--no-playlist", command.Arguments);
+        Assert.Contains("--playlist-items", command.Arguments);
         Assert.Contains("--no-overwrites", command.Arguments);
         Assert.Contains($"bv[height<={height}][ext=mp4]+ba[ext=m4a]/b[height<={height}][ext=mp4]", command.Arguments);
         Assert.DoesNotContain(command.Arguments, argument => argument.EndsWith("/best", StringComparison.Ordinal));
@@ -63,7 +64,7 @@ public sealed class VideoDownloadTests : IDisposable
             }
             return 0;
         });
-        var result = await new YtDlpVideoDownloadService(runner).DownloadAsync(new("https://example.com/video", root, 720), tools,
+        var result = await new YtDlpMediaDownloadService(runner).DownloadAsync(new("https://example.com/video", root, 720), tools,
             new SynchronousProgress(stages.Add), default);
         Assert.Equal(file, result.FilePath);
         Assert.Equal(720, result.ActualHeight);
@@ -80,7 +81,7 @@ public sealed class VideoDownloadTests : IDisposable
     public async Task NonzeroExitNeverReportsSuccessEvenIfFileIsAnnounced()
     {
         var runner = new FakeRunner((_, output, _) => { output("CATAMEDIA_RESULT:\"file.mp4\""); return 1; });
-        await Assert.ThrowsAsync<IOException>(() => new YtDlpVideoDownloadService(runner).DownloadAsync(new("https://example.com/video", root, 720), tools, null, default));
+        await Assert.ThrowsAsync<IOException>(() => new YtDlpMediaDownloadService(runner).DownloadAsync(new("https://example.com/video", root, 720), tools, null, default));
     }
 
     [Theory]
@@ -90,7 +91,7 @@ public sealed class VideoDownloadTests : IDisposable
     {
         var file = outside ? Path.Combine(Path.GetTempPath(), "outside.mp4") : Path.Combine(root, "missing.mp4");
         var runner = new FakeRunner((_, output, _) => { output("CATAMEDIA_RESULT:" + JsonSerializer.Serialize(file)); return 0; });
-        await Assert.ThrowsAsync<InvalidDataException>(() => new YtDlpVideoDownloadService(runner).DownloadAsync(new("https://example.com/video", root, 720), tools, null, default));
+        await Assert.ThrowsAsync<InvalidDataException>(() => new YtDlpMediaDownloadService(runner).DownloadAsync(new("https://example.com/video", root, 720), tools, null, default));
     }
 
     [Theory]
@@ -107,7 +108,7 @@ public sealed class VideoDownloadTests : IDisposable
             output(command.Executable.EndsWith("ffprobe.exe", StringComparison.Ordinal) ? metadata : "CATAMEDIA_RESULT:" + JsonSerializer.Serialize(file));
             return 0;
         });
-        await Assert.ThrowsAsync<InvalidDataException>(() => new YtDlpVideoDownloadService(runner).DownloadAsync(new("https://example.com/video", root, 720), tools, null, default));
+        await Assert.ThrowsAsync<InvalidDataException>(() => new YtDlpMediaDownloadService(runner).DownloadAsync(new("https://example.com/video", root, 720), tools, null, default));
     }
 
     [Fact]
@@ -115,7 +116,7 @@ public sealed class VideoDownloadTests : IDisposable
     {
         File.Delete(Path.Combine(root, "ffprobe.exe"));
         var runner = new FakeRunner((_, _, _) => throw new Exception("Must not start"));
-        await Assert.ThrowsAsync<FileNotFoundException>(() => new YtDlpVideoDownloadService(runner).DownloadAsync(new("https://example.com/video", root, 720), tools, null, default));
+        await Assert.ThrowsAsync<FileNotFoundException>(() => new YtDlpMediaDownloadService(runner).DownloadAsync(new("https://example.com/video", root, 720), tools, null, default));
     }
 
     [Fact]
@@ -123,7 +124,7 @@ public sealed class VideoDownloadTests : IDisposable
     {
         using var cancellation = new CancellationTokenSource();
         var runner = new FakeRunner((_, _, _) => { cancellation.Cancel(); return 0; });
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new YtDlpVideoDownloadService(runner).DownloadAsync(new("https://example.com/video", root, 720), tools, null, cancellation.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new YtDlpMediaDownloadService(runner).DownloadAsync(new("https://example.com/video", root, 720), tools, null, cancellation.Token));
     }
 
     public void Dispose() => Directory.Delete(root, recursive: true);

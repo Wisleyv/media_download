@@ -19,6 +19,18 @@ public sealed class PreferencesTests : IDisposable
     }
 
     [Fact]
+    public void EarlierPreferenceFilesWithoutBrowserChoiceRemainReadable()
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
+        File.WriteAllText(FilePath, "{\"SchemaVersion\":1,\"Language\":\"en\",\"Mode\":\"Audio\",\"VideoHeight\":1080,\"AudioFormat\":\"Flac\",\"AudioQuality\":\"High\"}");
+        var loaded = new JsonPreferencesStore(FilePath).Load();
+        Assert.True(loaded.CanSave);
+        Assert.Equal("en", loaded.Value.Language);
+        Assert.Equal(AudioFormat.Flac, loaded.Value.AudioFormat);
+        Assert.Null(loaded.Value.CookiesBrowser);
+    }
+
+    [Fact]
     public void SaveRoundTripsAllChoicesAndKeepsPreviousVersion()
     {
         var store = new JsonPreferencesStore(FilePath);
@@ -26,7 +38,7 @@ public sealed class PreferencesTests : IDisposable
         var updated = new Preferences
         {
             DestinationFolder = @"D:\Áudio", Language = "en", Mode = MediaMode.Audio,
-            VideoHeight = 1080, AudioFormat = AudioFormat.Flac, AudioQuality = AudioQuality.High
+            VideoHeight = 1080, AudioFormat = AudioFormat.Flac, AudioQuality = AudioQuality.High, CookiesBrowser = "firefox"
         };
         store.Save(original);
         store.Save(updated);

@@ -16,12 +16,14 @@ public sealed record Preferences
     public int VideoHeight { get; init; } = 720;
     public AudioFormat AudioFormat { get; init; } = AudioFormat.Mp3;
     public AudioQuality AudioQuality { get; init; } = AudioQuality.Standard;
+    public string? CookiesBrowser { get; init; }
 
     public void Validate()
     {
         if (SchemaVersion != 1 || Language is not ("pt" or "en") ||
             DestinationFolder is null || VideoHeight is not (720 or 1080) ||
-            !Enum.IsDefined(Mode) || !Enum.IsDefined(AudioFormat) || !Enum.IsDefined(AudioQuality))
+            !Enum.IsDefined(Mode) || !Enum.IsDefined(AudioFormat) || !Enum.IsDefined(AudioQuality) ||
+            CookiesBrowser is not (null or "chrome" or "edge" or "firefox" or "brave"))
             throw new InvalidDataException("Unsupported or invalid preferences.");
     }
 }
