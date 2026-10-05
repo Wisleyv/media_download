@@ -14,6 +14,13 @@ A instalação é individual e não pede administrador. O atalho na área de tra
 **Portátil:** extraia todo o ZIP em uma pasta gravável; abra CataMedia.exe.
 Não execute dentro do ZIP nem copie somente o EXE. Pastas com espaços e acentos são aceitas.
 
+O ZIP e o instalador incluem o .NET, mas **não incluem yt-dlp, FFmpeg/FFprobe ou Node.js**.
+Em uma máquina limpa, use **Componentes** para obtê-los com confirmação.
+Se já possui essas ferramentas, selecione yt-dlp.exe, a pasta que contém **ffmpeg.exe e
+ffprobe.exe juntos** e node.exe em **Mais opções e componentes**. Não é necessário copiá-los
+para a pasta do programa. A detecção automática procura na área de dependências do CataMedia,
+ao lado de CataMedia.exe e nas pastas do PATH; não procura em todo o computador.
+
 1. Abra Componentes; verifique e obtenha yt-dlp, FFmpeg + FFprobe e Node.js.
    São downloads externos opcionais, com confirmação e validação. Dependências já existentes
    podem ser escolhidas nas opções avançadas. Uma conexão é necessária para obter componentes e mídia.
@@ -56,6 +63,13 @@ Windows 10 version 2004 (19041) or newer, x64. .NET is bundled; no SDK/runtime i
 is needed. This preview does not replace the stable PowerShell release.
 Run Setup for a per-user installation, or extract the entire portable ZIP into a writable
 folder and launch CataMedia.exe. Do not launch inside the ZIP or copy just the EXE.
+
+The ZIP and installer bundle .NET, but **do not include yt-dlp, FFmpeg/FFprobe or Node.js**.
+On a clean machine, use **Components** to obtain them with confirmation. For existing tools,
+select yt-dlp.exe, a folder containing **both ffmpeg.exe and ffprobe.exe**, and node.exe in
+**More options and components**. Copying them into the application folder is unnecessary.
+Automatic discovery checks CataMedia's dependency storage, the application folder and PATH;
+it does not search the entire computer.
 
 Open Components to check and obtain yt-dlp, FFmpeg + FFprobe and Node.js with confirmation.
 Alternatively select existing tools in Advanced options. Paste one link per line, choose

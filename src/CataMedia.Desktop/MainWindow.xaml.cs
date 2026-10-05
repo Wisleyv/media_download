@@ -150,7 +150,8 @@ public partial class MainWindow : Window
                 catch (Exception error) when (DependencyDialog.Recoverable(error)) { }
             }
             var release = await dependencies.CheckAsync(DependencyKind.YtDlp, false, componentLifetime.Token);
-            if (installed is null || DependencyManager.IsNewer(DependencyKind.YtDlp, release.Version, installed))
+            // First-run setup must remain visible even when the release check succeeds.
+            if (!missing && (installed is null || DependencyManager.IsNewer(DependencyKind.YtDlp, release.Version, installed)))
             {
                 ShowComponentNotice("UpdateNotice", installed ?? "—", release.Version);
             }

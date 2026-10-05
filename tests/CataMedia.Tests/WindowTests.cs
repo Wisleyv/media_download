@@ -11,6 +11,64 @@ namespace CataMedia.Tests;
 
 public sealed class WindowTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MissingComponentsNoticeSurvivesSuccessfulReleaseCheck(bool incompleteFfmpegPair)
+    {
+        OnStaThread(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "CataMedia-first-run-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            using var handler = new ReleaseHandler();
+            using var client = new System.Net.Http.HttpClient(handler);
+            var manager = new DependencyManager(root, client, new VersionRunner());
+            var window = new MainWindow(new(DistributionMode.Portable, root, Path.Combine(root, "temp")), dependencyManager: manager);
+            try
+            {
+                foreach (var name in new[] { "yt-dlp.exe", "ffmpeg.exe" })
+                    File.WriteAllText(Path.Combine(root, name), "fixture");
+                ((TextBox)window.FindName("YtDlpPath")).Text = Path.Combine(root, "yt-dlp.exe");
+                ((TextBox)window.FindName("FfmpegFolder")).Text = root;
+                ((TextBox)window.FindName("NodePath")).Text = "";
+                if (incompleteFfmpegPair)
+                {
+                    File.WriteAllText(Path.Combine(root, "node.exe"), "fixture");
+                    ((TextBox)window.FindName("NodePath")).Text = Path.Combine(root, "node.exe");
+                }
+                var check = window.CheckStartupComponentsAsync();
+                PumpUntil(() => check.IsCompleted);
+                check.GetAwaiter().GetResult();
+                Assert.Equal(2, handler.Calls);
+                Assert.Equal(Visibility.Visible, ((StackPanel)window.FindName("ComponentBanner")).Visibility);
+                Assert.Contains("Faltam componentes", ((TextBlock)window.FindName("ComponentNotice")).Text);
+                ((ComboBox)window.FindName("LanguageChoice")).SelectedIndex = 1;
+                Assert.Contains("not included", ((TextBlock)window.FindName("ComponentNotice")).Text);
+                Assert.True(((Button)window.FindName("DownloadButton")).IsEnabled);
+                Assert.False(File.Exists(Path.Combine(root, "preferences.json")));
+            }
+            finally { window.Close(); Directory.Delete(root, true); }
+        });
+    }
+
+    private sealed class ReleaseHandler : System.Net.Http.HttpMessageHandler
+    {
+        public int Calls;
+        protected override Task<System.Net.Http.HttpResponseMessage> SendAsync(System.Net.Http.HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Calls++;
+            var body = request.RequestUri!.Host == "api.github.com"
+                ? """
+                  {"tag_name":"2026.09.01","prerelease":false,"draft":false,"assets":[
+                  {"name":"yt-dlp.exe","browser_download_url":"https://github.com/yt-dlp/yt-dlp/releases/download/2026.09.01/yt-dlp.exe"},
+                  {"name":"SHA2-256SUMS","browser_download_url":"https://github.com/yt-dlp/yt-dlp/releases/download/2026.09.01/SHA2-256SUMS"}]}
+                  """
+                : new string('a', 64) + "  yt-dlp.exe\n";
+            return Task.FromResult(new System.Net.Http.HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                { Content = new System.Net.Http.StringContent(body) });
+        }
+    }
+
     [Fact]
     public void OfflineStartupCheckKeepsDownloadAvailableAndWindowConstructionDoesNotUseNetwork()
     {
@@ -49,7 +107,7 @@ public sealed class WindowTests
     private sealed class VersionRunner : IProcessRunner
     {
         public Task<int> RunAsync(ProcessCommand command, Action<string> standardOutput, Action<string> standardError, CancellationToken cancellationToken)
-        { standardOutput("2026.08.19"); return Task.FromResult(0); }
+        { standardOutput(Path.GetFileName(command.Executable) == "node.exe" ? "v22.0.0" : "2026.08.19"); return Task.FromResult(0); }
     }
 
     [Theory]
