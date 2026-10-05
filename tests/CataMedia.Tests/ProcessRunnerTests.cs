@@ -32,13 +32,14 @@ public sealed class ProcessRunnerTests : IDisposable
         var script = Path.Combine(root, "fixture.ps1");
         File.WriteAllText(script, "$child = Start-Process powershell.exe -ArgumentList '-NoProfile -Command Start-Sleep -Seconds 90' -WindowStyle Hidden -PassThru\n[Console]::WriteLine($child.Id)\nStart-Sleep -Seconds 90");
         var childStarted = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         var task = new ExternalProcessRunner().RunAsync(new(powershell,
             ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script], root),
             line => { if (int.TryParse(line, out var pid)) childStarted.TrySetResult(pid); }, _ => { }, cancellation.Token);
-        var childId = await childStarted.Task.WaitAsync(TimeSpan.FromSeconds(10));
         try
         {
+            // Slow CI startup is separate from the cancellation deadline below.
+            var childId = await childStarted.Task.WaitAsync(TimeSpan.FromSeconds(30));
             cancellation.Cancel();
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => task.WaitAsync(TimeSpan.FromSeconds(10)));
             for (var attempt = 0; attempt < 30 && IsRunning(childId); attempt++) await Task.Delay(100);
@@ -47,7 +48,18 @@ public sealed class ProcessRunnerTests : IDisposable
         finally
         {
             cancellation.Cancel();
-            if (IsRunning(childId)) { using var child = Process.GetProcessById(childId); child.Kill(entireProcessTree: true); }
+            try { await task.WaitAsync(TimeSpan.FromSeconds(10)); }
+            catch (OperationCanceledException) { }
+            if (childStarted.Task.IsCompletedSuccessfully)
+            {
+                var childId = await childStarted.Task;
+                if (IsRunning(childId))
+                {
+                    using var child = Process.GetProcessById(childId);
+                    child.Kill(entireProcessTree: true);
+                    await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(10));
+                }
+            }
         }
     }
 

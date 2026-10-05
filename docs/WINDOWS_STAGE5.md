@@ -67,6 +67,12 @@ origem `2708035d0637b396e619080f097e2bba75e126af`, registrada em BUILD.json e ve
 ZIP aproximadamente 65 MB; instalador 47 MB. Evidências e fixtures em `artifacts/`, ignorado.
 O commit posterior de documentação não muda o código desses binários.
 
+CI revelou intermitência no teste preexistente de processos: a espera inicial pelo filho
+ficava fora do bloco de limpeza, deixando a fixture em uso quando expirava. O teste agora
+garante cancelamento e espera de encerramento mesmo nessa falha; a margem de inicialização
+é 30 segundos, mantendo o limite original de dez segundos para comprovar cancelamento.
+O executor do aplicativo não foi alterado. Essa correção de teste não muda os pacotes.
+
 Este ambiente não oferece Windows Sandbox nem VM limpa disponível. Validação em máquina
 limpa, usuário sem privilégios, atualização entre versões e piloto continuam pendentes
 antes da release. Etapa 5 tem implementação e testes locais concluídos, com essa ressalva
