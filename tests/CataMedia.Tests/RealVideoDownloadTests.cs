@@ -18,7 +18,7 @@ public sealed class RealVideoDownloadTests
             Environment.GetEnvironmentVariable("CATAMEDIA_FFMPEG")!, Environment.GetEnvironmentVariable("CATAMEDIA_NODE"));
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(10));
         var stages = new ConcurrentQueue<DownloadProgress>();
-        var result = await new YtDlpVideoDownloadService(new ExternalProcessRunner()).DownloadAsync(
+        var result = await new YtDlpMediaDownloadService(new ExternalProcessRunner()).DownloadAsync(
             new(Environment.GetEnvironmentVariable("CATAMEDIA_REAL_TEST_URL")!, output, 720), tools,
             new ImmediateProgress(stages.Enqueue), timeout.Token);
         Assert.InRange(result.ActualHeight, 1, 720);
