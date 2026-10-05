@@ -1,0 +1,29 @@
+name: Windows .NET stage 1
+
+on:
+  push:
+    branches: [main, feature/windows-dotnet-stage1]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-dotnet-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore CataMedia.sln --locked-mode
+      - run: dotnet build CataMedia.sln --configuration Release --no-restore
+      - run: dotnet test CataMedia.sln --configuration Release --no-build

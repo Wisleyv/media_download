@@ -1,4 +1,10 @@
 # Logs
+**/bin/
+**/obj/
+TestResults/
+artifacts/
+.vs/
+
 yt-gui-log-*.txt
 yt-gui-update-log-*.txt
 
