@@ -1,5 +1,7 @@
 # CataMedia
 
+> **Windows C#/.NET:** [guia da prévia / preview guide](WINDOWS_GUIDE.md) e [Etapa 5 — ZIP e instalador](WINDOWS_STAGE5.md). Distribuição ainda não publicada como release.
+
 > **Prévia C#/.NET para Windows / Windows C#/.NET preview:** consulte [Etapa 4 — componentes externos](WINDOWS_STAGE4.md) para obtenção, atualização e recuperação de yt-dlp, FFmpeg/FFprobe e Node.js. As instruções abaixo continuam referentes à versão PowerShell estável. / See [Stage 4 — external components](WINDOWS_STAGE4.md) for acquisition, updates and recovery. The instructions below still refer to the stable PowerShell version.
 
 > **PT-BR:** Interface gráfica simples para Windows que baixa vídeos e músicas do YouTube usando yt-dlp.

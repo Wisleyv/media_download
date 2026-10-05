@@ -73,7 +73,7 @@ public static class UiStrings
         ["DataFolder"] = ("Dados: {0}", "Data: {0}"), ["ExecutableFilter"] = ("Executável (*.exe)|*.exe", "Executable (*.exe)|*.exe"),
         ["PlaylistTitle"] = ("Confirmar lista", "Confirm playlist"),
         ["PlaylistPrompt"] = ("{0}\nEsta lista contém {1} itens. O que deseja baixar?", "{0}\nThis playlist contains {1} items. What would you like to download?"),
-        ["StartupError"] = ("Não foi possível abrir o CataMedia. Confira a pasta do aplicativo e os marcadores de distribuição.", "Could not open CataMedia. Check the application folder and distribution markers."),
+        ["StartupError"] = ("Não foi possível abrir o CataMedia. Confira os marcadores de distribuição e a permissão de gravação. No portátil, extraia todo o ZIP em uma pasta gravável do usuário.", "Could not open CataMedia. Check distribution markers and write permission. For portable mode, extract the entire ZIP into a writable user folder."),
         ["WholePlaylist"] = ("Baixar a lista", "Download playlist"), ["SingleVideo"] = ("Só este vídeo", "Only this video"),
         ["SingleUnavailable"] = ("Este link aponta somente para uma lista; não há um vídeo individual selecionado.", "This link points only to a playlist; no individual video is selected."),
         ["PasteFailed"] = ("Não foi possível ler a área de transferência. Cole os links manualmente.", "Could not read the clipboard. Paste the links manually.")
