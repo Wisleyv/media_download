@@ -25,6 +25,7 @@ public partial class App : Application
             window.Height = Math.Min(window.Height, area.Height);
             window.Show();
             _ = window.CheckStartupComponentsAsync();
+            _ = window.CheckAppUpdatesAsync();
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
         {

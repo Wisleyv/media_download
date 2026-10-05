@@ -36,9 +36,12 @@ Idioma PT-BR/EN, formatos, resolução e opções avançadas continuam disponív
 Não são criados logs por download. Conteúdo privado ou restrito pode não estar disponível.
 Use apenas conteúdo que você tenha autorização para obter.
 
-**Atualizar:** em Ajuda / Sobre, confira a versão e consulte as releases. A consulta abre o GitHub,
-sem comparação automática ou instalação. A release PowerShell 2.x pertence à versão anterior.
-Para o CataMedia C#, use somente uma release Windows 3.x compatível quando publicada.
+**Atualizar:** o aplicativo consulta novas versões em segundo plano ao abrir. Em Ajuda / Sobre,
+use **Verificar nova versão do CataMedia** para repetir a consulta. São consideradas releases
+estáveis C# 3.x com instalador, ZIP portátil Windows x64 e checksums; PowerShell 2.x e prévias
+não são oferecidas como atualização automática. Prévias continuam disponíveis pela página de releases.
+Uma versão nova gera um aviso com acesso à release; nenhum pacote é baixado ou instalado
+automaticamente. Sem conexão, você pode continuar usando os componentes existentes.
 No instalado, feche o aplicativo e execute o novo instalador sobre a mesma pasta.
 No portátil, feche o aplicativo, faça cópia de segurança de `data` e extraia o novo ZIP
 sobre os arquivos do programa. Preserve `data`; não misture os marcadores de instalação.
@@ -84,9 +87,12 @@ after completion. The sequential queue supports cancellation and retrying failur
 Partial files may remain after cancellation. Download logs are not created.
 
 Help / About shows developer credits, version, offline guide and GitHub manual/releases.
-Release checking opens GitHub; it does not automatically compare versions or install updates.
-The existing PowerShell 2.x release is a different application generation; use a compatible
-Windows 3.x release for the C# application when published.
+New versions are checked in the background at startup. Use **Check for a new CataMedia version**
+in Help / About to check again. Only stable C# 3.x releases with Windows x64 installer,
+portable ZIP and checksums are considered; PowerShell 2.x and preview releases are not offered
+automatically. Previews remain available on the releases page. An update notice links to the
+release; packages are never downloaded or installed automatically. Offline checks do not
+prevent using existing dependencies.
 Close the application before upgrading. Run the new installer in the same folder, or back up
 portable `data` and extract the new ZIP over program files, preserving `data`.
 Installed data resides in `%LOCALAPPDATA%\CataMedia\data`; portable data is next to the EXE.

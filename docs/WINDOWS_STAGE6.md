@@ -172,3 +172,39 @@ Harness isolado em `artifacts/stage6-ffmpeg-check/`.
 
 Compilação autossuficiente para repetir o teste: `artifacts/stage6-ffmpeg-check-fix/`.
 Confirmação no ambiente do usuário permanece pendente. Nenhuma release ou merge realizado.
+
+O usuário confirmou a resolução satisfatória do crash do FFmpeg.
+
+## Pendência 1 de encerramento — verificação de versões CataMedia
+
+Implementada a consulta independente do CataMedia ao iniciar e em Ajuda/Sobre. Usa a
+lista de releases oficiais, não apenas `/latest`, que pode apontar para PowerShell 2.x.
+Considera somente releases estáveis C# 3.x com os nomes de pacotes Windows x64 produzidos
+pelo empacotamento (instalador e ZIP portátil) e SHA256SUMS.txt. Ignora drafts, prévias,
+outras linhas principais e conjuntos incompletos. Prévias continuam disponíveis pelo
+link manual à página de releases; sua publicação não gerará oferta automática.
+
+Comparação numérica de major/minor/patch, ignorando metadados do commit instalado.
+Uma release estável da mesma versão numérica substitui uma compilação de prévia; uma
+versão inferior nunca é oferecida. Escolhe a maior versão compatível, independentemente
+da ordem retornada. Confere o endereço oficial da página antes de apresentá-lo.
+
+Consulta assíncrona com limite total de 12 s, até três páginas de 100 releases e até
+2 MB por página. Cache apenas em memória por seis horas; botão manual força consulta.
+Falhas de rede, limites da API ou metadados inválidos mostram orientação em Ajuda/Sobre,
+sem impedir uso, sem apagar aviso de atualização já identificado e sem gravar dados.
+Cancelar/fechar interrompe a consulta pendente. Um aviso separado do yt-dlp oferece
+abrir a release e adiar; não baixa nem instala pacotes, não altera dependências ou mídia.
+
+108 testes aprovados, quatro testes reais opcionais ignorados; build sem avisos ou erros.
+Cobertura inclui versões 2.x/3.x/4.x, prévias/drafts, pacotes incompletos, comparação
+numérica, paginação, cache/consulta forçada, offline, HTTP 403, JSON/tamanho/endereço
+inválidos, cancelamento e uso da janela durante a consulta. Consulta real ao GitHub
+confirmou ausência de release estável compatível nesta verificação. Aviso e Ajuda/Sobre
+inspecionados em PT-BR/EN com release simulada 3.1.0; não é uma release publicada.
+Evidências em `artifacts/stage6-app-updates/`.
+
+Compilação autossuficiente para avaliação: `artifacts/stage6-app-update-check/`.
+Este recorte resolve somente a pendência 1. Documentação geral de apresentação, referência
+publicada do manual, validações de distribuição, integração de PRs, release e sanitização
+continuam pendentes; nenhum merge, tag ou release realizado.

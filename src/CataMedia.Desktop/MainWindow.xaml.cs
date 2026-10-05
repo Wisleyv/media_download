@@ -17,6 +17,10 @@ public partial class MainWindow : Window
     private readonly ApplicationPaths paths;
     private readonly System.Net.Http.HttpClient dependencyClient;
     private readonly DependencyManager dependencies;
+    private readonly AppReleaseChecker appUpdates;
+    private AppRelease? latestAppRelease;
+    private string appCheckKey = "AppCheckNotChecked";
+    private object[] appCheckArguments = [];
     private readonly CancellationTokenSource componentLifetime = new();
     private bool checkingComponents;
     private string componentNoticeKey = "Ready";
@@ -32,15 +36,16 @@ public partial class MainWindow : Window
     private object[] statusArguments = [];
     private string UiLanguage => LanguageChoice.SelectedIndex == 1 ? "en" : "pt";
     private string T(string key) => UiStrings.Get(key, UiLanguage);
+    private static string ApplicationVersion => typeof(MainWindow).Assembly.GetCustomAttributes(false)
+        .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().Single().InformationalVersion;
     private void Help_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new Window { Title = T("Help"), Owner = this, Width = 560, Height = 470,
+        var dialog = new Window { Title = T("Help"), Owner = this, Width = 560, Height = 620,
             WindowStartupLocation = WindowStartupLocation.CenterOwner };
         dialog.SetResourceReference(StyleProperty, "WindowStyle");
         dialog.Icon = Icon;
         var panel = new StackPanel { Margin = new Thickness(20) };
-        var version = typeof(MainWindow).Assembly.GetCustomAttributes(false)
-            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().Single().InformationalVersion;
+        var version = ApplicationVersion;
         panel.Children.Add(new System.Windows.Controls.Image { Source = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/CataMedia;component/Assets/CataMedia.png")), Width = 64, Height = 64, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 12) });
         panel.Children.Add(new TextBlock { Text = "CataMedia " + version, FontSize = 20, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
         panel.Children.Add(new TextBlock { Text = T("Credits"), Margin = new Thickness(0, 8, 0, 12) });
@@ -48,6 +53,18 @@ public partial class MainWindow : Window
         var guide = Path.Combine(AppContext.BaseDirectory, "GUIDE.txt");
         if (File.Exists(guide)) AddLink("LocalGuide", guide);
         AddLink("AppReleases", "https://github.com/Wisleyv/media_download/releases");
+        using var helpLifetime = CancellationTokenSource.CreateLinkedTokenSource(componentLifetime.Token);
+        var updateStatus = new TextBlock { Text = string.Format(T(appCheckKey), appCheckArguments), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 8) };
+        var checkUpdate = new Button { Content = T("CheckAppUpdate"), HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(8) };
+        checkUpdate.Click += async (_, _) =>
+        {
+            checkUpdate.IsEnabled = false; updateStatus.Text = T("CheckingAppUpdate");
+            await CheckAppUpdatesAsync(true, helpLifetime.Token);
+            if (!helpLifetime.IsCancellationRequested)
+            { updateStatus.Text = string.Format(T(appCheckKey), appCheckArguments); checkUpdate.IsEnabled = true; }
+        };
+        dialog.Closed += (_, _) => helpLifetime.Cancel();
+        panel.Children.Add(checkUpdate); panel.Children.Add(updateStatus);
         panel.Children.Add(new TextBlock { Text = T("ReleaseHint"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 12, 0, 0) });
         dialog.Content = new ScrollViewer { Content = panel };
         dialog.ShowDialog();
@@ -69,7 +86,7 @@ public partial class MainWindow : Window
 
     public MainWindow(ApplicationPaths paths, IMediaDownloadService? downloadService = null,
         IMediaLinkResolver? linkResolver = null, Func<MediaLinkResolution, PlaylistSelection>? choosePlaylist = null,
-        DependencyManager? dependencyManager = null)
+        DependencyManager? dependencyManager = null, AppReleaseChecker? appReleaseChecker = null)
     {
         if (Application.Current is null)
             Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("pack://application:,,,/CataMedia;component/Styles.xaml") });
@@ -79,6 +96,7 @@ public partial class MainWindow : Window
         var runner = new ExternalProcessRunner();
         dependencyClient = DependencyManager.CreateClient();
         dependencies = dependencyManager ?? new(paths.DependenciesDirectory, dependencyClient, runner);
+        appUpdates = appReleaseChecker ?? new(dependencyClient, ApplicationVersion);
         downloadQueue = new(downloadService ?? new YtDlpMediaDownloadService(runner));
         this.linkResolver = linkResolver ?? new YtDlpMediaLinkResolver(runner);
         this.choosePlaylist = choosePlaylist ?? (resolution =>
@@ -108,6 +126,37 @@ public partial class MainWindow : Window
         ApplyLanguage();
         UpdateOptions();
         Closed += (_, _) => { componentLifetime.Cancel(); dependencyClient.Dispose(); };
+    }
+
+    // Startup is explicitly invoked by App; constructing a window never accesses the network.
+    public async Task CheckAppUpdatesAsync(bool force = false, CancellationToken cancellationToken = default)
+    {
+        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(componentLifetime.Token, cancellationToken);
+        try
+        {
+            var result = await appUpdates.CheckAsync(force, lifetime.Token);
+            if (lifetime.IsCancellationRequested) return;
+            appCheckKey = result.Latest is null ? "AppNoCompatibleRelease" : result.UpdateAvailable ? "AppUpdateAvailable" : "AppNoNewerRelease";
+            appCheckArguments = result.Latest is null ? [] : [result.Latest.Version];
+            latestAppRelease = result.UpdateAvailable ? result.Latest : null;
+            AppUpdateNotice.Text = string.Format(T(appCheckKey), appCheckArguments);
+            AppUpdateBanner.Visibility = result.UpdateAvailable ? Visibility.Visible : Visibility.Collapsed;
+        }
+        catch (Exception error) when (DependencyDialog.Recoverable(error))
+        {
+            if (lifetime.IsCancellationRequested) return;
+            appCheckKey = "AppCheckUnavailable"; appCheckArguments = [];
+            // A failed check must not disable downloads or hide a previously identified update.
+        }
+    }
+
+    private void AppUpdateLater_Click(object sender, RoutedEventArgs e) => AppUpdateBanner.Visibility = Visibility.Collapsed;
+    private void OpenAppRelease_Click(object sender, RoutedEventArgs e)
+    {
+        if (latestAppRelease is null) return;
+        try { Process.Start(new ProcessStartInfo(latestAppRelease.Url) { UseShellExecute = true }); }
+        catch (Exception error) when (error is IOException or System.ComponentModel.Win32Exception or InvalidOperationException)
+        { MessageBox.Show(this, T("OpenFailed"), T("Help"), MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
     private void RefreshManagedComponents()
@@ -232,6 +281,7 @@ public partial class MainWindow : Window
         foreach (var row in queue) row.Refresh(UiLanguage);
         StatusLabel.Text = string.Format(T(statusKey), statusArguments);
         ComponentNotice.Text = string.Format(T(componentNoticeKey), componentNoticeArguments);
+        if (latestAppRelease is not null) AppUpdateNotice.Text = string.Format(T("AppUpdateAvailable"), latestAppRelease.Version);
     }
 
     private void UpdateOptions()

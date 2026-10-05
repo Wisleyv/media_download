@@ -11,6 +11,54 @@ namespace CataMedia.Tests;
 
 public sealed class WindowTests
 {
+    [Fact]
+    public void ApplicationUpdateCheckDoesNotBlockUseAndKeepsKnownUpdateOnOfflineFailure()
+    {
+        OnStaThread(() =>
+        {
+            SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+            var root = Path.Combine(Path.GetTempPath(), "CataMedia-app-update-" + Guid.NewGuid().ToString("N"));
+            using var handler = new PendingAppReleaseHandler();
+            using var client = new System.Net.Http.HttpClient(handler);
+            var window = new MainWindow(new(DistributionMode.Portable, root, Path.Combine(root, "temp")),
+                appReleaseChecker: new(client, "3.0.0-stage5"));
+            try
+            {
+                Assert.Equal(0, handler.Calls);
+                var task = window.CheckAppUpdatesAsync();
+                Assert.False(task.IsCompleted);
+                Assert.True(((Button)window.FindName("DownloadButton")).IsEnabled);
+                handler.Completion.SetResult(AppReleaseTests.Response(AppReleaseTests.Release("v2.0.1"), AppReleaseTests.Release("v3.1.0")));
+                PumpUntil(() => task.IsCompleted); task.GetAwaiter().GetResult();
+                Assert.Equal(Visibility.Visible, ((StackPanel)window.FindName("AppUpdateBanner")).Visibility);
+                Assert.Equal(Visibility.Collapsed, ((StackPanel)window.FindName("ComponentBanner")).Visibility);
+                Assert.Contains("3.1.0", ((TextBlock)window.FindName("AppUpdateNotice")).Text);
+                ((ComboBox)window.FindName("LanguageChoice")).SelectedIndex = 1;
+                Assert.Contains("new CataMedia version", ((TextBlock)window.FindName("AppUpdateNotice")).Text);
+                handler.Offline = true;
+                var offline = window.CheckAppUpdatesAsync(true);
+                PumpUntil(() => offline.IsCompleted); offline.GetAwaiter().GetResult();
+                Assert.Equal(Visibility.Visible, ((StackPanel)window.FindName("AppUpdateBanner")).Visibility);
+                Assert.True(((Button)window.FindName("DownloadButton")).IsEnabled);
+                Assert.False(Directory.Exists(root)); // Checks never save preferences, dependencies or logs.
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    private sealed class PendingAppReleaseHandler : System.Net.Http.HttpMessageHandler
+    {
+        public int Calls;
+        public bool Offline;
+        public TaskCompletionSource<System.Net.Http.HttpResponseMessage> Completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        protected override Task<System.Net.Http.HttpResponseMessage> SendAsync(System.Net.Http.HttpRequestMessage request, CancellationToken token)
+        {
+            Calls++;
+            if (Offline) throw new System.Net.Http.HttpRequestException("Offline fixture");
+            return Completion.Task.WaitAsync(token);
+        }
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
