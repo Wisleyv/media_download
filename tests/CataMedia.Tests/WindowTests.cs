@@ -2,6 +2,7 @@ using System.IO;
 using System.Runtime.ExceptionServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using CataMedia.Core;
 using CataMedia.Desktop;
 using CataMedia.Windows;
@@ -69,6 +70,74 @@ public sealed class WindowTests
                 Directory.Delete(root, recursive: true);
             }
         });
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void WindowTracksDownloadCompletionCancellationAndClose(bool cancel, bool close)
+    {
+        OnStaThread(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "CataMedia-window-" + Guid.NewGuid().ToString("N"));
+            var paths = new ApplicationPaths(DistributionMode.Portable, root, Path.Combine(root, "temp"));
+            var service = new ControlledDownload();
+            var window = new MainWindow(paths, service);
+            try
+            {
+                SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+                window.Show();
+                ((TextBox)window.FindName("VideoUrl")).Text = "https://example.com/video";
+                ((TextBox)window.FindName("Destination")).Text = root;
+                ((ComboBox)window.FindName("ResolutionChoice")).SelectedIndex = 1;
+                var start = (Button)window.FindName("DownloadButton");
+                start.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.False(start.IsEnabled);
+                Assert.Equal(1080, service.Request?.MaximumHeight);
+                if (close) window.Close();
+                else if (cancel) ((Button)window.FindName("CancelButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                else service.Complete(new(Path.Combine(root, "video.mp4"), 1080, 12));
+                PumpUntil(() => start.IsEnabled);
+                Assert.Equal(!cancel, ((Button)window.FindName("OpenFolderButton")).IsEnabled);
+                var status = ((TextBlock)window.FindName("StatusLabel")).Text;
+                Assert.Contains(cancel ? "Cancelado" : "Concluído", status);
+                if (close) Assert.False(window.IsVisible);
+                Assert.False(Directory.Exists(root)); // Editing/downloading never implicitly saves preferences.
+            }
+            finally
+            {
+                service.Cancel();
+                window.Close();
+            }
+        });
+    }
+
+    private static void PumpUntil(Func<bool> ready)
+    {
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(10) };
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        timer.Tick += (_, _) => { if (ready() || DateTime.UtcNow >= deadline) frame.Continue = false; };
+        timer.Start();
+        Dispatcher.PushFrame(frame);
+        timer.Stop();
+        Assert.True(ready(), "UI did not finish the download state transition.");
+    }
+
+    private sealed class ControlledDownload : IVideoDownloadService
+    {
+        private readonly TaskCompletionSource<VideoDownloadResult> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public VideoDownloadRequest? Request { get; private set; }
+        public async Task<VideoDownloadResult> DownloadAsync(VideoDownloadRequest request, DownloadTools tools,
+            IProgress<DownloadProgress>? progress, CancellationToken cancellationToken)
+        {
+            Request = request;
+            using var registration = cancellationToken.Register(() => completion.TrySetCanceled(cancellationToken));
+            return await completion.Task;
+        }
+        public void Complete(VideoDownloadResult result) => completion.TrySetResult(result);
+        public void Cancel() => completion.TrySetCanceled();
     }
 
     private static void OnStaThread(Action action)
