@@ -242,3 +242,42 @@ interface aprovados após a troca do endereço. Não há mudança no motor de do
 Compilação de avaliação com guia local atualizado: `artifacts/stage6-documentation-preview/`.
 Pendência 2 concluída neste recorte; versão final, empacotamento/validações, integração de
 PRs, GitHub Release e sanitização continuam pendentes. Nenhum merge, tag ou release realizado.
+
+## Distribuição preparada — 3.0.0-preview.1
+
+Versão incorporada atualizada para `3.0.0-preview.1`. ZIP e instalador gerados pelo
+empacotador existente, no mesmo checkout limpo e com o mesmo payload do commit
+`a3e12a4459fb96cf2d916aea529a34e8c03b156a`. A versão informativa incorpora esse SHA.
+Origem: branch da etapa 6, ainda sem integração dos PRs; não é uma release publicada.
+
+Pacotes em `artifacts/packages/3.0.0-preview.1-a3e12a4459fb/`:
+
+- `CataMedia-3.0.0-preview.1-win-x64-portable.zip`
+- `CataMedia-Setup-3.0.0-preview.1-win-x64.exe`
+- `SHA256SUMS.txt` e `payload/BUILD.json`
+
+SDK 10.0.401, runtimes .NET/Windows Desktop 10.0.12, Inno Setup 6.7.3 com hash
+validado. Build sem avisos/erros; 108 testes aprovados, 4 reais opcionais ignorados.
+Manifesto com 409 arquivos conferido após extração e instalação. Checksums conferidos
+na origem e na cópia local. MIT, guia e avisos correspondem ao checkout de origem;
+as três licenças/notices do runtime correspondem aos pacotes NuGet restaurados.
+Nenhum executável das dependências externas, fonte, teste ou log incluído no payload.
+
+Validação local: abertura portátil/instalada sem usar runtime externo, caminhos com
+espaços/acentos, instalação por usuário, reinstalação do mesmo pacote, atalhos e
+desinstalação preservando dados/mídia de teste. Evidência:
+`artifacts/stage5-test-e83d55bd0c1646da83d5dbb75876e294/evidence.json`.
+O campo `update` dessa evidência significa reinstalação do mesmo pacote, não atualização
+entre versões. Máquina limpa, conta padrão separada, atualização entre versões e
+acessibilidade/DPI real continuam pendentes. Pacotes sem assinatura digital.
+
+SHA256:
+
+```text
+0355a6747067f47a8b30bf5008a9ee58df79c328b6205e106c4a46335261dd4d  CataMedia-3.0.0-preview.1-win-x64-portable.zip
+5eae4cec7e7125a646d68d53b3fbaf7940a65bd083d4ad7695b74b5726438a36  CataMedia-Setup-3.0.0-preview.1-win-x64.exe
+```
+
+Checkout isolado preservado em `C:/Temp/catamedia-preview1-a3e12a4459fb`.
+Nenhum merge, tag, GitHub Release, remoção de branch ou sanitização realizado.
+O commit posterior deste registro não altera a origem dos binários acima.
