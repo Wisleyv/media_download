@@ -240,6 +240,43 @@ public sealed class WindowTests
         });
     }
 
+    [Fact]
+    public void UpdatingYtDlpClearsThePreviousVersionNotice()
+    {
+        OnStaThread(() =>
+        {
+            SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+            var root = Path.Combine(Path.GetTempPath(), "CataMedia-update-notice-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            using var handler = new ReleaseHandler();
+            using var client = new System.Net.Http.HttpClient(handler);
+            var runner = new VersionRunner();
+            var window = new MainWindow(new(DistributionMode.Portable, root, Path.Combine(root, "temp")),
+                dependencyManager: new DependencyManager(root, client, runner));
+            try
+            {
+                foreach (var name in new[] { "yt-dlp.exe", "ffmpeg.exe", "ffprobe.exe", "node.exe" })
+                    File.WriteAllText(Path.Combine(root, name), "fixture");
+                ((TextBox)window.FindName("YtDlpPath")).Text = Path.Combine(root, "yt-dlp.exe");
+                ((TextBox)window.FindName("FfmpegFolder")).Text = root;
+                ((TextBox)window.FindName("NodePath")).Text = Path.Combine(root, "node.exe");
+                var check = window.CheckStartupComponentsAsync();
+                PumpUntil(() => check.IsCompleted);
+                check.GetAwaiter().GetResult();
+                var banner = (StackPanel)window.FindName("ComponentBanner");
+                Assert.Equal(Visibility.Visible, banner.Visibility);
+                Assert.Contains("2026.08.19", ((TextBlock)window.FindName("ComponentNotice")).Text);
+                runner.YtDlpVersion = "2026.09.01";
+                check = window.CheckStartupComponentsAsync();
+                PumpUntil(() => check.IsCompleted);
+                check.GetAwaiter().GetResult();
+                Assert.Equal(Visibility.Collapsed, banner.Visibility);
+                Assert.True(((Button)window.FindName("DownloadButton")).IsEnabled);
+            }
+            finally { window.Close(); Directory.Delete(root, true); }
+        });
+    }
+
     private sealed class ReleaseHandler : System.Net.Http.HttpMessageHandler
     {
         public int Calls;
@@ -313,7 +350,8 @@ public sealed class WindowTests
     private sealed class VersionRunner : IProcessRunner
     {
         public Task<int> RunAsync(ProcessCommand command, Action<string> standardOutput, Action<string> standardError, CancellationToken cancellationToken)
-        { standardOutput(Path.GetFileName(command.Executable) == "node.exe" ? "v22.0.0" : "2026.08.19"); return Task.FromResult(0); }
+        { standardOutput(Path.GetFileName(command.Executable) == "node.exe" ? "v22.0.0" : YtDlpVersion); return Task.FromResult(0); }
+        public string YtDlpVersion { get; set; } = "2026.08.19";
     }
 
     [Theory]
@@ -510,7 +548,7 @@ public sealed class WindowTests
             try
             {
                 window.Show();
-                ((TextBox)window.FindName("VideoUrl")).Text = "https://example.com/first\nhttps://example.com/second";
+                ((TextBox)window.FindName("VideoUrl")).Text = " \t\nhttps://example.com/first\n \t\nhttps://example.com/second\n  ";
                 var download = (Button)window.FindName("DownloadButton");
                 download.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 PumpUntil(() => download.IsEnabled);

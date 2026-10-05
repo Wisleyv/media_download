@@ -301,3 +301,10 @@ do comportamento de produção. Sugestões de controle de concorrência entre in
 e limite de tamanho de preferências são melhorias adicionais, não condições já
 contratadas; não implementadas neste recorte. Preferências devem ser salvas por uma
 instância de cada vez; arquivos locais artificialmente enormes não foram validados.
+
+Revisão adicional: filtragem de linhas em branco agora ocorre após trim, mantendo links
+válidos em lotes com espaços/tabulações; aviso antigo do yt-dlp é ocultado após uma
+consulta bem-sucedida confirmar a versão atual. 21 testes de interface aprovados,
+incluindo regressão do aviso e lote com linhas em branco. RELEASING.md corrigido para
+PowerShell 7 (pwsh); o script usa APIs indisponíveis no Windows PowerShell 5.1 e deve
+ser executado da raiz do checkout, conforme instruído. Link do manual já corrigido.

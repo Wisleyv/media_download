@@ -216,6 +216,7 @@ public partial class MainWindow : Window
             {
                 ShowComponentNotice("UpdateNotice", installed ?? "—", release.Version);
             }
+            else if (!missing && componentNoticeKey == "UpdateNotice") ComponentBanner.Visibility = Visibility.Collapsed;
         }
         catch (Exception error) when (DependencyDialog.Recoverable(error)) { /* Existing components remain usable offline. */ }
         finally { checkingComponents = false; }
@@ -329,8 +330,8 @@ public partial class MainWindow : Window
             IReadOnlyList<QueueEntry> rows;
             if (retry is null)
             {
-                var requests = VideoUrl.Text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
-                    .Select(line => Request(line.Trim())).ToArray();
+                var requests = VideoUrl.Text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(Request).ToArray();
                 if (requests.Length == 0) { SetStatus("NoLinks"); return; }
                 foreach (var request in requests) request.Validate();
                 List<QueueEntry> prepared = [];

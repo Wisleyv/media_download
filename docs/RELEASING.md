@@ -23,7 +23,7 @@ O empacotador exige árvore limpa, incluindo arquivos não rastreados. Preserve 
 imagens fornecidas pelo usuário e outros arquivos locais: use um checkout/worktree isolado
 do commit escolhido. Não apague arquivos para satisfazer esse requisito.
 
-Ferramentas: SDK definido em `global.json` e compilador oficial Inno Setup **6.7.3**,
+Ferramentas: PowerShell **7** (`pwsh`), SDK definido em `global.json` e compilador oficial Inno Setup **6.7.3**,
 validado pelo hash exigido no script. Não alterar SDK/hash nem usar empacotador PowerShell
 legado para contornar falhas. Executar da raiz do checkout:
 
@@ -31,7 +31,7 @@ legado para contornar falhas. Executar da raiz do checkout:
 dotnet restore CataMedia.sln --locked-mode
 dotnet build CataMedia.sln -c Release --no-restore
 dotnet test CataMedia.sln -c Release --no-build
-powershell.exe -NoProfile -File scripts/package-windows.ps1 `
+pwsh -NoProfile -File scripts/package-windows.ps1 `
   -DotNet 'C:\caminho\dotnet.exe' -Iscc 'C:\caminho\ISCC.exe'
 ```
 
@@ -102,6 +102,7 @@ user files; do not delete them to satisfy the clean-tree requirement. Use the SD
 `global.json` and the validated Inno Setup **6.7.3** compiler. Run the commands in the
 Portuguese section above with actual tool paths. Record skipped real tests as skipped.
 
+Run the packager with PowerShell **7** (`pwsh`), not Windows PowerShell 5.1.
 `scripts/package-windows.ps1` produces a self-contained, untrimmed win-x64 payload and
 uses those same binaries for ZIP and Setup. It does not create tags, publish releases
 or overwrite an existing output folder. `scripts/package-release.ps1` is the legacy
