@@ -11,6 +11,76 @@ namespace CataMedia.Tests;
 
 public sealed class WindowTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FfmpegCheckHandlesDevelopmentBuildAndInvalidReleaseWithoutUnhandledException(bool invalidRelease)
+    {
+        OnStaThread(() =>
+        {
+            SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+            var root = Path.Combine(Path.GetTempPath(), "CataMedia-ffmpeg-check-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            var executable = Path.Combine(root, "ffmpeg.exe");
+            File.WriteAllText(executable, "preserved fixture");
+            using var handler = new FfmpegReleaseHandler(invalidRelease);
+            using var client = new System.Net.Http.HttpClient(handler);
+            var dialog = new DependencyDialog(new(root, client, new DevelopmentFfmpegRunner()), "pt",
+                kind => kind == DependencyKind.Ffmpeg ? executable : null,
+                (_, _) => throw new InvalidOperationException("Checking must not activate a component."));
+            var unhandled = new List<Exception>();
+            System.Windows.Threading.DispatcherUnhandledExceptionEventHandler catchUnhandled = (_, e) =>
+            { unhandled.Add(e.Exception); e.Handled = true; };
+            dialog.Dispatcher.UnhandledException += catchUnhandled;
+            try
+            {
+                dialog.Show();
+                var panel = (StackPanel)((ScrollViewer)dialog.Content).Content;
+                var choice = panel.Children.OfType<ComboBox>().Single();
+                var buttons = panel.Children.OfType<Button>().ToArray();
+                PumpUntil(() => handler.Calls >= 1 && buttons[0].IsEnabled);
+                choice.SelectedIndex = 1;
+                PumpUntil(() => handler.Calls >= 2 && buttons[0].IsEnabled);
+                // Drain queued async-void exceptions so the regression is reported, not allowed to kill the test host.
+                var drained = System.Diagnostics.Stopwatch.StartNew();
+                PumpUntil(() => drained.ElapsedMilliseconds >= 100);
+                Assert.Empty(unhandled);
+                Assert.True(dialog.IsVisible);
+                Assert.True(choice.IsEnabled);
+                Assert.Equal(!invalidRelease, buttons[1].IsEnabled);
+                var details = panel.Children.OfType<TextBlock>().ElementAt(1).Text;
+                Assert.Contains(invalidRelease ? "Não foi possível concluir" : "versões de desenvolvimento", details);
+                Assert.Equal("preserved fixture", File.ReadAllText(executable));
+                Assert.False(File.Exists(Path.Combine(root, "Ffmpeg", "active.json")));
+            }
+            finally
+            {
+                dialog.Close(); dialog.Dispatcher.UnhandledException -= catchUnhandled;
+                Directory.Delete(root, true);
+            }
+        });
+    }
+
+    private sealed class DevelopmentFfmpegRunner : IProcessRunner
+    {
+        public Task<int> RunAsync(ProcessCommand command, Action<string> output, Action<string> error, CancellationToken token)
+        { output("ffmpeg version N-116720-g5c1c0325cd-20240818 Copyright (c) 2000-2024 the FFmpeg developers"); return Task.FromResult(0); }
+    }
+
+    private sealed class FfmpegReleaseHandler(bool invalidRelease) : System.Net.Http.HttpMessageHandler
+    {
+        public int Calls;
+        protected override Task<System.Net.Http.HttpResponseMessage> SendAsync(System.Net.Http.HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Calls++;
+            if (request.RequestUri!.Host != "www.gyan.dev") throw new System.Net.Http.HttpRequestException("Offline fixture for other components");
+            var body = request.RequestUri.AbsolutePath.EndsWith("release-version", StringComparison.Ordinal)
+                ? (invalidRelease ? "not a release" : "9.0.2") : new string('a', 64);
+            return Task.FromResult(new System.Net.Http.HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                { Content = new System.Net.Http.StringContent(body) });
+        }
+    }
+
     [Fact]
     public void MenusFollowLanguageAndReuseExplicitPreferencesAndAdvancedOptions()
     {

@@ -117,15 +117,18 @@ public sealed class DependencyDialog : Window
     private Task CheckSelectedAsync() => RunAsync(async () =>
     {
         release = null; installedVersion = null;
+        var localVersionUnknown = false;
         var executable = current(Kind);
         if (executable is not null)
         {
             try { installedVersion = await manager.ReadVersionAsync(Kind, executable, lifetime.Token); }
-            catch (Exception error) when (Recoverable(error)) { }
+            catch (Exception error) when (Recoverable(error)) { localVersionUnknown = true; }
         }
         release = await manager.CheckAsync(Kind, true, lifetime.Token);
         details.Text = string.Format(T("Versions"), installedVersion ?? T("NotAvailable"), release.Version)
-            + "\n" + release.Source + "\n\n" + T("ComponentCheckResultHint");
+            + "\n" + release.Source + "\n\n"
+            + (localVersionUnknown ? T("ComponentLocalVersionUnknown") + "\n\n" : "")
+            + T("ComponentCheckResultHint");
     });
     private void UpdateButtons()
     {
@@ -151,7 +154,7 @@ public sealed class DependencyDialog : Window
             busy = false; UpdateButtons(); if (closeAfterCancel) Close();
         }
     }
-    internal static bool Recoverable(Exception error) => error is System.IO.IOException or UnauthorizedAccessException
+    internal static bool Recoverable(Exception error) => error is System.IO.IOException or System.IO.InvalidDataException or UnauthorizedAccessException
         or System.Net.Http.HttpRequestException or OperationCanceledException or System.Text.Json.JsonException
         or InvalidOperationException or ArgumentException or KeyNotFoundException or System.ComponentModel.Win32Exception or PlatformNotSupportedException;
 }

@@ -148,3 +148,27 @@ Pasta autossuficiente para avaliação: `artifacts/stage6-visual-preview/`.
 Não foram gerados novos pacotes oficiais, tags, releases, merges ou limpeza.
 Aceitação visual na máquina limpa, teclado completo/leitor de tela, DPI real e os demais
 cenários de distribuição continuam pendentes. Este recorte não conclui a etapa 6.
+
+## Correção após aceitação visual — crash ao verificar FFmpeg
+
+O usuário aceitou os aprimoramentos visuais, mas relatou encerramento ao verificar
+FFmpeg/FFprobe. O evento .NET Runtime 1026 do Windows confirma `InvalidDataException:
+Unrecognized component version` em ReadVersionAsync → CheckSelectedAsync → RunAsync.
+O FFmpeg no PATH desta máquina anuncia `N-116720-g5c1c0325cd-20240818`, uma versão de
+desenvolvimento que o comparador numérico não reconhece.
+
+O filtro de erros recuperáveis incluía IOException, mas InvalidDataException não deriva
+dela e escapava do evento assíncrono da janela. Correção restrita: incluir explicitamente
+InvalidDataException no filtro compartilhado da interface e explicar em PT-BR/EN quando
+há caminho local, mas sua versão não pode ser identificada/comparada. Não ampliar o parser
+nem enfraquecer validação de versões/checksums dos pacotes. Componentes existentes preservados.
+
+94 testes aprovados, quatro opcionais ignorados; build sem avisos ou erros. Novos testes
+cobrem versão FFmpeg de desenvolvimento, metadados de release inválidos, ausência de
+exceções não tratadas, disponibilidade correta do botão e preservação do arquivo local.
+Consulta na janela com o FFmpeg real instalado e metadados HTTPS do fornecedor completou
+com versão disponível 9.0.2, sem crash ou ativação de componente. Não foram baixados pacotes.
+Harness isolado em `artifacts/stage6-ffmpeg-check/`.
+
+Compilação autossuficiente para repetir o teste: `artifacts/stage6-ffmpeg-check-fix/`.
+Confirmação no ambiente do usuário permanece pendente. Nenhuma release ou merge realizado.
