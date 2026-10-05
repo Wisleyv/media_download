@@ -1,10 +1,10 @@
-name: Windows .NET stage 1
+name: Windows .NET
 
 on:
   push:
-    branches: [main, feature/windows-dotnet-stage1]
+    branches: [main, 'feature/windows-dotnet-stage*']
   pull_request:
-    branches: [main]
+    branches: [main, 'feature/windows-dotnet-stage*']
 
 permissions:
   contents: read
