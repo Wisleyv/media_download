@@ -11,6 +11,49 @@ namespace CataMedia.Tests;
 
 public sealed class DependencyTests : IDisposable
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task DownloadReportsIntermediateBytesWithOptionalTotalBeforeValidation(bool knownLength)
+    {
+        var bytes = Pe();
+        Array.Resize(ref bytes, 200_000);
+        handler.Respond = _ => new(HttpStatusCode.OK)
+            { Content = new StreamContent(new SlowPackageStream(bytes, knownLength)) };
+        var samples = new List<DependencyDownloadProgress>();
+        var stages = new List<string>();
+        var progress = new ImmediateProgress<DependencyDownloadProgress>(samples.Add);
+        var stageProgress = new ImmediateProgress<string>(key =>
+        {
+            if (key == "ValidatingComponent") Assert.Equal(bytes.Length, samples[^1].ReceivedBytes);
+            stages.Add(key);
+        });
+        var path = await manager.InstallAsync(Release(DependencyKind.YtDlp, "2026.08.19", bytes),
+            stageProgress, default, progress);
+        Assert.Equal(0, samples[0].ReceivedBytes);
+        Assert.Contains(samples, sample => sample.ReceivedBytes > 0 && sample.ReceivedBytes < bytes.Length);
+        Assert.Equal(bytes.Length, samples[^1].ReceivedBytes);
+        Assert.All(samples, sample => Assert.Equal(knownLength ? (long?)bytes.Length : null, sample.TotalBytes));
+        Assert.True(samples.Zip(samples.Skip(1)).All(pair => pair.First.ReceivedBytes <= pair.Second.ReceivedBytes));
+        Assert.Equal(new[] { "DownloadingComponent", "ValidatingComponent" }, stages);
+        Assert.Equal(path, manager.ActiveExecutable(DependencyKind.YtDlp));
+    }
+
+    private sealed class ImmediateProgress<T>(Action<T> report) : IProgress<T>
+    {
+        public void Report(T value) => report(value);
+    }
+
+    private sealed class SlowPackageStream(byte[] bytes, bool knownLength) : MemoryStream(bytes)
+    {
+        public override bool CanSeek => knownLength;
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            await Task.Delay(220, cancellationToken);
+            return await base.ReadAsync(buffer[..Math.Min(buffer.Length, 65536)], cancellationToken);
+        }
+    }
+
     private readonly string root = Path.Combine(Path.GetTempPath(), "CataMedia-components-ç " + Guid.NewGuid().ToString("N"));
     private readonly Handler handler = new();
     private readonly Runner runner = new();

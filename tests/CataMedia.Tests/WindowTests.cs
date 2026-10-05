@@ -34,7 +34,7 @@ public sealed class WindowTests
                     PumpUntil(() => handler.Calls == index + 1 && check.IsEnabled);
                     Assert.True(dialog.IsVisible);
                     Assert.True(choice.IsEnabled);
-                    Assert.Contains("Não foi possível", panel.Children.OfType<TextBlock>().Last().Text);
+                    Assert.Contains("Não foi possível", panel.Children.OfType<TextBlock>().ElementAt(1).Text);
                 }
                 check.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 PumpUntil(() => handler.Calls == 4 && check.IsEnabled);

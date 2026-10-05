@@ -19,6 +19,7 @@ public sealed record DependencyRelease(DependencyKind Kind, string Version, stri
     };
 }
 public sealed record DependencyActivation(string Active, string? Previous);
+public sealed record DependencyDownloadProgress(long ReceivedBytes, long? TotalBytes);
 
 /// <summary>Versioned external components. Preparation never overwrites a working executable.</summary>
 public sealed class DependencyManager
@@ -174,7 +175,8 @@ public sealed class DependencyManager
         return version;
     }
 
-    public async Task<string> InstallAsync(DependencyRelease release, IProgress<string>? progress, CancellationToken cancellationToken)
+    public async Task<string> InstallAsync(DependencyRelease release, IProgress<string>? progress, CancellationToken cancellationToken,
+        IProgress<DependencyDownloadProgress>? downloadProgress = null)
     {
         ValidateRelease(release, release.Kind);
         await mutation.WaitAsync(cancellationToken);
@@ -189,7 +191,7 @@ public sealed class DependencyManager
             var token = timeout.Token;
             progress?.Report("DownloadingComponent");
             var package = Path.Combine(staging, "package");
-            await DownloadAsync(release.PackageUrl, package, release.Kind == DependencyKind.Ffmpeg ? 250_000_000 : 150_000_000, token);
+            await DownloadAsync(release.PackageUrl, package, release.Kind == DependencyKind.Ffmpeg ? 250_000_000 : 150_000_000, token, downloadProgress);
             progress?.Report("ValidatingComponent");
             await using (var stream = File.OpenRead(package))
             {
@@ -348,7 +350,8 @@ public sealed class DependencyManager
         return output.ToArray();
     }
 
-    private async Task DownloadAsync(string url, string destination, int limit, CancellationToken token)
+    private async Task DownloadAsync(string url, string destination, int limit, CancellationToken token,
+        IProgress<DependencyDownloadProgress>? progress)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         using var response = await SendAsync(request, token);
@@ -356,20 +359,31 @@ public sealed class DependencyManager
         if (response.Content.Headers.ContentLength > limit) throw new InvalidDataException("Component package too large.");
         await using var input = await response.Content.ReadAsStreamAsync(token);
         await using var output = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-        await CopyBoundedAsync(input, output, limit, token);
+        var length = response.Content.Headers.ContentLength;
+        var total = length is > 0 ? length : null;
+        progress?.Report(new(0, total));
+        await CopyBoundedAsync(input, output, limit, token, received => progress?.Report(new(received, total)));
     }
 
-    private static async Task CopyBoundedAsync(Stream input, Stream output, long limit, CancellationToken token)
+    private static async Task CopyBoundedAsync(Stream input, Stream output, long limit, CancellationToken token,
+        Action<long>? received = null)
     {
         var buffer = new byte[81920];
         long total = 0;
+        var reportedAt = System.Diagnostics.Stopwatch.StartNew();
         int count;
         while ((count = await input.ReadAsync(buffer, token)) != 0)
         {
             total += count;
             if (total > limit) throw new InvalidDataException("Component data too large.");
             await output.WriteAsync(buffer.AsMemory(0, count), token);
+            if (reportedAt.ElapsedMilliseconds >= 200)
+            {
+                received?.Invoke(total);
+                reportedAt.Restart();
+            }
         }
+        received?.Invoke(total);
     }
 
     private static string FindHash(string sums, string name)

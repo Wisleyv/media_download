@@ -78,3 +78,25 @@ Validação: 89 testes aprovados, quatro testes reais opcionais ignorados; build
 avisos ou erros. Testes verificam consulta ao selecionar os três itens, repetição offline,
 janela mantida aberta e reabertura do diálogo com orientação preservada na tela principal.
 A instalação real sequencial na máquina limpa permanece para repetição pelo usuário.
+
+## Terceiro recorte — progresso de download dos componentes
+
+O usuário confirmou que a preparação sequencial funciona sem reiniciar e que as mensagens
+melhoraram. Relatou ausência de progresso durante cerca de cinco minutos ao obter FFmpeg/FFprobe.
+O código notificava somente início do download e início da validação; isso não permite
+concluir se a espera relatada foi transferência lenta ou interrupção de rede.
+
+Adicionados barra e volume recebido na janela Componentes para todos os componentes.
+Com tamanho informado pelo servidor, mostrar MB recebidos/total e percentual. Sem tamanho,
+mostrar barra de atividade e MB recebidos, sem inventar percentual. Atualizar o tempo desde
+os últimos dados a cada segundo, inclusive durante espera inicial. Informar que fechar
+cancela. A validação tem indicação própria, sem tratar 100% recebido como instalação pronta.
+Atualizações de bytes limitadas a cinco por segundo, além do início/fim, para não inundar
+a interface. Mantidos timeout, limites de tamanho, checksum, cancelamento e ativação segura.
+
+Testes adicionais simulam transferência lenta com e sem tamanho, verificam amostras
+intermediárias monotônicas, volume final e transição para validação antes da ativação.
+
+Validação local: 91 testes aprovados, quatro opcionais ignorados; build sem avisos ou erros.
+Pasta autossuficiente para teste: `artifacts/stage6-component-progress/`. Este recorte
+não gera instalador nem release. A verificação visual na máquina limpa permanece pendente.
