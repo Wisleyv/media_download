@@ -7,6 +7,16 @@ public sealed record ApplicationPaths(DistributionMode Mode, string DataDirector
     public string PreferencesFile => Path.Combine(DataDirectory, "preferences.json");
     public string DependenciesDirectory => Path.Combine(DataDirectory, "dependencies");
 
+    public void VerifyWritable()
+    {
+        Directory.CreateDirectory(DataDirectory);
+        var probe = Path.Combine(DataDirectory, ".write-check-" + Guid.NewGuid().ToString("N"));
+        using var stream = new FileStream(probe, FileMode.CreateNew, FileAccess.Write, FileShare.None,
+            1, FileOptions.DeleteOnClose);
+        stream.WriteByte(0);
+        stream.Flush(flushToDisk: true);
+    }
+
     public static ApplicationPaths Resolve(string executableDirectory, string localApplicationData)
     {
         var portable = File.Exists(Path.Combine(executableDirectory, "portable.mode"));

@@ -32,6 +32,35 @@ public partial class MainWindow : Window
     private object[] statusArguments = [];
     private string UiLanguage => LanguageChoice.SelectedIndex == 1 ? "en" : "pt";
     private string T(string key) => UiStrings.Get(key, UiLanguage);
+    private void Help_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Window { Title = T("Help"), Owner = this, Width = 490, Height = 330,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner };
+        var panel = new StackPanel { Margin = new Thickness(20) };
+        var version = typeof(MainWindow).Assembly.GetCustomAttributes(false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().Single().InformationalVersion;
+        panel.Children.Add(new TextBlock { Text = "CataMedia " + version, TextWrapping = TextWrapping.Wrap });
+        panel.Children.Add(new TextBlock { Text = T("Credits"), Margin = new Thickness(0, 8, 0, 12) });
+        AddLink("Manual", "https://github.com/Wisleyv/media_download/blob/feature/windows-dotnet-stage5/docs/WINDOWS_GUIDE.md");
+        var guide = Path.Combine(AppContext.BaseDirectory, "GUIDE.txt");
+        if (File.Exists(guide)) AddLink("LocalGuide", guide);
+        AddLink("AppReleases", "https://github.com/Wisleyv/media_download/releases");
+        panel.Children.Add(new TextBlock { Text = T("ReleaseHint"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 12, 0, 0) });
+        dialog.Content = new ScrollViewer { Content = panel };
+        dialog.ShowDialog();
+
+        void AddLink(string label, string target)
+        {
+            var button = new Button { Content = T(label), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 4, 0, 4), Padding = new Thickness(8) };
+            button.Click += (_, _) =>
+            {
+                try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
+                catch (Exception error) when (error is IOException or System.ComponentModel.Win32Exception or InvalidOperationException)
+                { MessageBox.Show(dialog, T("OpenFailed"), T("Help"), MessageBoxButton.OK, MessageBoxImage.Error); }
+            };
+            panel.Children.Add(button);
+        }
+    }
     private static readonly string?[] Browsers = [null, "chrome", "edge", "firefox", "brave"];
 
     public MainWindow(ApplicationPaths paths, IMediaDownloadService? downloadService = null,

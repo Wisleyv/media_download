@@ -4,6 +4,12 @@ public static class UiStrings
 {
     public static IReadOnlyDictionary<string, (string Pt, string En)> Values { get; } = new Dictionary<string, (string, string)>
     {
+        ["Help"] = ("Ajuda / Sobre", "Help / About"),
+        ["Credits"] = ("Desenvolvimento: Wisley Vilela. Licença MIT.", "Developed by Wisley Vilela. MIT license."),
+        ["Manual"] = ("Manual no GitHub", "Manual on GitHub"),
+        ["LocalGuide"] = ("Guia local (sem internet)", "Local guide (offline)"),
+        ["AppReleases"] = ("Consultar novas releases do CataMedia", "Check CataMedia releases"),
+        ["ReleaseHint"] = ("Compare a versão acima com a release publicada. Esta consulta abre o GitHub; não instala atualizações. Componentes são atualizados pelo botão Componentes.", "Compare the version above with the published release. This opens GitHub; it does not install updates. Dependencies are updated through Components."),
         ["Hint"] = ("Cole os links, escolha o formato e baixe. Um link por linha.", "Paste links, choose a format and download. One link per line."),
         ["Links"] = ("_Links", "_Links"), ["Paste"] = ("_Colar", "_Paste"),
         ["Language"] = ("_Idioma", "_Language"), ["Destination"] = ("_Salvar em", "_Save to"),
@@ -67,7 +73,7 @@ public static class UiStrings
         ["DataFolder"] = ("Dados: {0}", "Data: {0}"), ["ExecutableFilter"] = ("Executável (*.exe)|*.exe", "Executable (*.exe)|*.exe"),
         ["PlaylistTitle"] = ("Confirmar lista", "Confirm playlist"),
         ["PlaylistPrompt"] = ("{0}\nEsta lista contém {1} itens. O que deseja baixar?", "{0}\nThis playlist contains {1} items. What would you like to download?"),
-        ["StartupError"] = ("Não foi possível abrir o CataMedia. Confira a pasta do aplicativo e os marcadores de distribuição.", "Could not open CataMedia. Check the application folder and distribution markers."),
+        ["StartupError"] = ("Não foi possível abrir o CataMedia. Confira os marcadores de distribuição e a permissão de gravação. No portátil, extraia todo o ZIP em uma pasta gravável do usuário.", "Could not open CataMedia. Check distribution markers and write permission. For portable mode, extract the entire ZIP into a writable user folder."),
         ["WholePlaylist"] = ("Baixar a lista", "Download playlist"), ["SingleVideo"] = ("Só este vídeo", "Only this video"),
         ["SingleUnavailable"] = ("Este link aponta somente para uma lista; não há um vídeo individual selecionado.", "This link points only to a playlist; no individual video is selected."),
         ["PasteFailed"] = ("Não foi possível ler a área de transferência. Cole os links manualmente.", "Could not read the clipboard. Paste the links manually.")

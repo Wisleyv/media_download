@@ -110,6 +110,7 @@
 </Grid>
 <StackPanel Grid.Row="2">
 <WrapPanel Margin="0,8,0,12">
+                <Button Content="{DynamicResource Help}" Click="Help_Click" Padding="12,8" Margin="0,0,8,0" />
                 <Button x:Name="ComponentsButton" Content="{DynamicResource Components}" Click="Components_Click" Padding="12,8" Margin="0,0,8,0" />
                 <Button x:Name="DownloadButton" Content="{DynamicResource Download}" Click="Download_Click" AutomationProperties.AutomationId="Download" Padding="12,8" Margin="0,0,8,0" />
                 <Button x:Name="CancelButton" Content="{DynamicResource Cancel}" Click="Cancel_Click" AutomationProperties.AutomationId="Cancel" IsEnabled="False" Padding="12,8" Margin="0,0,8,0" />

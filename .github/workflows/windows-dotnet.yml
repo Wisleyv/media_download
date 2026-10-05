@@ -27,3 +27,5 @@ jobs:
       - run: dotnet restore CataMedia.sln --locked-mode
       - run: dotnet build CataMedia.sln --configuration Release --no-restore
       - run: dotnet test CataMedia.sln --configuration Release --no-build
+      - run: dotnet restore src/CataMedia.Desktop/CataMedia.Desktop.csproj --runtime win-x64 --locked-mode
+      - run: dotnet publish src/CataMedia.Desktop/CataMedia.Desktop.csproj --configuration Release --runtime win-x64 --self-contained true --no-restore -p:PublishTrimmed=false -o artifacts/windows-publish
