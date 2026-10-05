@@ -292,3 +292,12 @@ ou acessibilidade/DPI. Esses cenários permanecem sem evidência específica.
 Autorizada a revisão e integração dos PRs em ordem, com CI aprovada, seguida de novo
 empacotamento do commit integrado. Preservar branches, arquivos pessoais, releases e tags.
 A publicação de GitHub Release e a sanitização não fazem parte deste recorte.
+
+Revisão de integração: `ImplicitUsings` já habilitado na etapa 1; o alerta automático
+de compilação não procede, corroborado pela CI. Corrigido teste de falha de gravação
+para permitir leitura e provocar falha efetiva em File.Replace, conferindo bytes
+originais e limpeza do temporário; 15 testes de preferências aprovados. Sem alteração
+do comportamento de produção. Sugestões de controle de concorrência entre instâncias
+e limite de tamanho de preferências são melhorias adicionais, não condições já
+contratadas; não implementadas neste recorte. Preferências devem ser salvas por uma
+instância de cada vez; arquivos locais artificialmente enormes não foram validados.

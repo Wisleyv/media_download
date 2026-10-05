@@ -80,9 +80,13 @@ public sealed class PreferencesTests : IDisposable
         var store = new JsonPreferencesStore(FilePath);
         store.Save(new Preferences());
         var bytes = File.ReadAllBytes(FilePath);
-        using (var locked = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.None))
-            Assert.Throws<InvalidDataException>(() => store.Save(new Preferences { Language = "en" }));
+        using (var locked = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            Assert.True(store.Load().CanSave);
+            Assert.Throws<IOException>(() => store.Save(new Preferences { Language = "en" }));
+        }
         Assert.Equal(bytes, File.ReadAllBytes(FilePath));
+        Assert.Empty(Directory.GetFiles(Path.GetDirectoryName(FilePath)!, "*.tmp"));
     }
 
     [Theory]
