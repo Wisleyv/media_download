@@ -45,6 +45,29 @@ O aplicativo e seu instalador permanecem sem assinatura, conforme decisão do pr
 
 ## Validação
 
-Resultados e limitações da validação desta etapa serão registrados após o empacotamento.
-Máquina Windows limpa e piloto com usuários constituem critérios da entrega; não
-considerar o simples build prova de funcionamento em máquina limpa.
+Em 5 de outubro de 2026:
+
+- Restore em modo bloqueado aprovado; build Release sem avisos ou erros;
+  86 testes offline aprovados, quatro grupos de testes reais desativados por padrão.
+- ZIP e instalador produzidos e conferidos por SHA-256. Manifesto de cada arquivo
+  validado após extração e instalação; diferenças limitadas ao marcador e arquivos do desinstalador.
+- Portátil aberto em caminho com espaços e acentos. Extração repetida preservou dados.
+- Instalador executado em pasta isolada, atalho Iniciar conferido, aplicativo aberto;
+  reinstalação do mesmo pacote e desinstalação preservaram dados e mídia de teste.
+  Não existia instalador de versão anterior; atualização entre versões diferentes permanece para o piloto.
+- Abertura com PATH reduzido, DOTNET_ROOT apontando para pasta inexistente e busca
+  multinível desativada confirmou uso do runtime incluído. Isso não substitui máquina limpa.
+- Ajuda conferida visualmente em português e inglês. A versão empacotada inclui guia offline.
+- Verificação inicial de pasta gravável implementada; obstrução de `data` por arquivo
+  simulada sem sobrescrevê-lo. ACLs restritivas e usuário Windows sem privilégios
+  administrativos não foram exercitados nesta máquina.
+
+Pacotes locais de teste: `artifacts/packages/3.0.0-stage5-2708035d0637/`,
+origem `2708035d0637b396e619080f097e2bba75e126af`, registrada em BUILD.json e versão incorporada.
+ZIP aproximadamente 65 MB; instalador 47 MB. Evidências e fixtures em `artifacts/`, ignorado.
+O commit posterior de documentação não muda o código desses binários.
+
+Este ambiente não oferece Windows Sandbox nem VM limpa disponível. Validação em máquina
+limpa, usuário sem privilégios, atualização entre versões e piloto continuam pendentes
+antes da release. Etapa 5 tem implementação e testes locais concluídos, com essa ressalva
+de aceitação. Nenhuma release foi publicada e a etapa 6 não foi iniciada.
