@@ -281,3 +281,14 @@ SHA256:
 Checkout isolado preservado em `C:/Temp/catamedia-preview1-a3e12a4459fb`.
 Nenhum merge, tag, GitHub Release, remoção de branch ou sanitização realizado.
 O commit posterior deste registro não altera a origem dos binários acima.
+
+## Aceitação do usuário e integração autorizada
+
+O usuário confirmou funcionamento previsto nos testes em máquina limpa dos pacotes
+3.0.0-preview.1 preparados anteriormente. Registro de aceitação informado pelo usuário;
+não equivale a confirmação específica de conta padrão separada, atualização entre versões
+ou acessibilidade/DPI. Esses cenários permanecem sem evidência específica.
+
+Autorizada a revisão e integração dos PRs em ordem, com CI aprovada, seguida de novo
+empacotamento do commit integrado. Preservar branches, arquivos pessoais, releases e tags.
+A publicação de GitHub Release e a sanitização não fazem parte deste recorte.
