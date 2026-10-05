@@ -10,7 +10,8 @@ public sealed class DependencyDialog : Window
     private readonly string language;
     private readonly Func<DependencyKind, string?> current;
     private readonly Action<DependencyKind, string> activated;
-    private readonly ComboBox choice = new() { ItemsSource = new[] { "yt-dlp", "FFmpeg + FFprobe", "Node.js 22 (YouTube)" }, SelectedIndex = 0 };
+    private readonly ComboBox choice = new() { ItemsSource = new[] { "yt-dlp", "FFmpeg + FFprobe", "Node.js 22 (YouTube)" }, SelectedIndex = 0,
+        Width = 320, HorizontalAlignment = HorizontalAlignment.Left };
     private readonly TextBlock details = new() { TextWrapping = TextWrapping.Wrap, Margin = new(0, 12, 0, 12) };
     private readonly Button check = new(), install = new(), rollback = new();
     private readonly ProgressBar transferBar = new() { Minimum = 0, Maximum = 100, Height = 16, Visibility = Visibility.Collapsed };
@@ -31,7 +32,8 @@ public sealed class DependencyDialog : Window
         Action<DependencyKind, string> activated)
     {
         this.manager = manager; this.language = language; this.current = current; this.activated = activated;
-        Title = T("Components"); Width = 580; Height = 490; MinWidth = 480; MinHeight = 450;
+        Title = T("Components"); Width = 640; Height = 640; MinWidth = 540; MinHeight = 500;
+        SetResourceReference(StyleProperty, "WindowStyle");
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var panel = new StackPanel { Margin = new(20) };
         panel.Children.Add(new TextBlock { Text = T("ComponentsConsent"), TextWrapping = TextWrapping.Wrap });
@@ -40,6 +42,7 @@ public sealed class DependencyDialog : Window
         panel.Children.Add(transferBar); panel.Children.Add(transferDetails);
         transferTimer.Tick += (_, _) => UpdateTransfer();
         check.Content = T("CheckNow"); install.Content = T("InstallUpdate"); rollback.Content = T("RestorePrevious");
+        install.SetResourceReference(StyleProperty, "PrimaryButton");
         foreach (var button in new[] { check, install, rollback }) { button.Margin = new(0, 3, 0, 3); button.Padding = new(8); panel.Children.Add(button); }
         var cancel = new Button { Content = T("Close"), Margin = new(0, 10, 0, 0), Padding = new(8) };
         cancel.Click += (_, _) => Close(); panel.Children.Add(cancel);

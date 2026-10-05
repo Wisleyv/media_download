@@ -12,6 +12,41 @@ namespace CataMedia.Tests;
 public sealed class WindowTests
 {
     [Fact]
+    public void MenusFollowLanguageAndReuseExplicitPreferencesAndAdvancedOptions()
+    {
+        OnStaThread(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "CataMedia-menu-" + Guid.NewGuid().ToString("N"));
+            var window = new MainWindow(new(DistributionMode.Portable, root, Path.Combine(root, "temp")));
+            try
+            {
+                window.Show();
+                var menu = (Menu)window.FindName("MainMenuBar");
+                Assert.Equal("_Arquivo", ((MenuItem)menu.Items[0]).Header);
+                ((ComboBox)window.FindName("LanguageChoice")).SelectedIndex = 1;
+                Assert.Equal("_File", ((MenuItem)menu.Items[0]).Header);
+                var media = (ComboBox)window.FindName("MediaChoice");
+                var peer = System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(media);
+                var expand = (System.Windows.Automation.Provider.IExpandCollapseProvider)peer.GetPattern(System.Windows.Automation.Peers.PatternInterface.ExpandCollapse);
+                expand.Expand(); window.UpdateLayout();
+                Assert.True(media.IsDropDownOpen);
+                expand.Collapse(); Assert.False(media.IsDropDownOpen);
+                Assert.NotNull(peer.GetPattern(System.Windows.Automation.Peers.PatternInterface.Selection));
+                ((ComboBoxItem)media.Items[1]).IsSelected = true;
+                Assert.Equal(1, media.SelectedIndex);
+                ((MenuItem)window.FindName("AdvancedMenuItem")).IsChecked = true;
+                Assert.True(((Expander)window.FindName("AdvancedOptions")).IsExpanded);
+                Assert.False(File.Exists(Path.Combine(root, "preferences.json")));
+                ((TextBox)window.FindName("Destination")).Text = root;
+                ((MenuItem)window.FindName("SaveMenuItem")).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                Assert.Equal(root, new JsonPreferencesStore(Path.Combine(root, "preferences.json")).Load().Value.DestinationFolder);
+                Assert.NotNull(window.Icon);
+            }
+            finally { window.Close(); if (Directory.Exists(root)) Directory.Delete(root, true); }
+        });
+    }
+
+    [Fact]
     public void ComponentSelectionChecksEachItemWithoutClosingDialogAndAllowsOfflineRetry()
     {
         OnStaThread(() =>
@@ -248,6 +283,9 @@ public sealed class WindowTests
                 Assert.False(start.IsEnabled);
                 Assert.False(((Button)window.FindName("ComponentsButton")).IsEnabled);
                 Assert.False(((Button)window.FindName("ComponentUpdateButton")).IsEnabled);
+                Assert.False(((MenuItem)window.FindName("ComponentsMenuItem")).IsEnabled);
+                Assert.False(((MenuItem)window.FindName("SaveMenuItem")).IsEnabled);
+                Assert.False(((ComboBox)window.FindName("LanguageChoice")).IsEnabled);
                 Assert.Equal(1080, service.Request?.MaximumHeight);
                 if (close) window.Close();
                 else if (cancel) ((Button)window.FindName("CancelButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));

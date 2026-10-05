@@ -5,9 +5,13 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>CataMedia</AssemblyName>
     <Version>3.0.0-stage5</Version>
+    <ApplicationIcon>Assets/CataMedia.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../CataMedia.Windows/CataMedia.Windows.csproj" />
     <Content Include="portable.mode" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Resource Include="Assets/CataMedia.png" />
+    <Resource Include="Assets/CataMedia.ico" />
+    <None Update="Assets/CataMedia.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

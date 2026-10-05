@@ -34,12 +34,15 @@ public partial class MainWindow : Window
     private string T(string key) => UiStrings.Get(key, UiLanguage);
     private void Help_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new Window { Title = T("Help"), Owner = this, Width = 490, Height = 330,
+        var dialog = new Window { Title = T("Help"), Owner = this, Width = 560, Height = 470,
             WindowStartupLocation = WindowStartupLocation.CenterOwner };
+        dialog.SetResourceReference(StyleProperty, "WindowStyle");
+        dialog.Icon = Icon;
         var panel = new StackPanel { Margin = new Thickness(20) };
         var version = typeof(MainWindow).Assembly.GetCustomAttributes(false)
             .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().Single().InformationalVersion;
-        panel.Children.Add(new TextBlock { Text = "CataMedia " + version, TextWrapping = TextWrapping.Wrap });
+        panel.Children.Add(new System.Windows.Controls.Image { Source = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/CataMedia;component/Assets/CataMedia.png")), Width = 64, Height = 64, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 12) });
+        panel.Children.Add(new TextBlock { Text = "CataMedia " + version, FontSize = 20, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
         panel.Children.Add(new TextBlock { Text = T("Credits"), Margin = new Thickness(0, 8, 0, 12) });
         AddLink("Manual", "https://github.com/Wisleyv/media_download/blob/feature/windows-dotnet-stage5/docs/WINDOWS_GUIDE.md");
         var guide = Path.Combine(AppContext.BaseDirectory, "GUIDE.txt");
@@ -62,11 +65,14 @@ public partial class MainWindow : Window
         }
     }
     private static readonly string?[] Browsers = [null, "chrome", "edge", "firefox", "brave"];
+    private void Exit_Click(object sender, RoutedEventArgs e) => Close();
 
     public MainWindow(ApplicationPaths paths, IMediaDownloadService? downloadService = null,
         IMediaLinkResolver? linkResolver = null, Func<MediaLinkResolution, PlaylistSelection>? choosePlaylist = null,
         DependencyManager? dependencyManager = null)
     {
+        if (Application.Current is null)
+            Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("pack://application:,,,/CataMedia;component/Styles.xaml") });
         InitializeComponent();
         this.paths = paths;
         store = new(paths.PreferencesFile);
@@ -177,6 +183,7 @@ public partial class MainWindow : Window
     {
         if (activeDownload is not null) return;
         var dialog = new DependencyDialog(dependencies, UiLanguage, CurrentComponent, ActivateComponent) { Owner = this };
+        dialog.Icon = Icon;
         dialog.ShowDialog();
         await CheckStartupComponentsAsync();
     }
@@ -383,6 +390,7 @@ public partial class MainWindow : Window
     private void SetBusy(bool busy)
     {
         DownloadInputs.IsEnabled = !busy;
+        LanguageChoice.IsEnabled = !busy;
         DownloadButton.IsEnabled = !busy;
         CancelButton.IsEnabled = busy;
         ComponentsButton.IsEnabled = ComponentUpdateButton.IsEnabled = !busy;

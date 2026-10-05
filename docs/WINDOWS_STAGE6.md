@@ -22,7 +22,7 @@ fornecidas manualmente. Não valida obtenção assistida nessa máquina, instala
 máquina limpa, conta padrão separada ou atualização entre versões diferentes.
 Esses cenários permanecem pendentes. Os pacotes da etapa 5 não foram substituídos.
 
-## Próxima interação — revisão visual solicitada, ainda não executada
+## Revisão visual solicitada — executada no quarto recorte abaixo
 
 - Revisar distribuição das seções, espaçamento, hierarquia e dimensões dos controles.
 - Reduzir a largura desnecessária dos menus suspensos e afastar campos da barra de rolagem.
@@ -100,3 +100,51 @@ intermediárias monotônicas, volume final e transição para validação antes 
 Validação local: 91 testes aprovados, quatro opcionais ignorados; build sem avisos ou erros.
 Pasta autossuficiente para teste: `artifacts/stage6-component-progress/`. Este recorte
 não gera instalador nem release. A verificação visual na máquina limpa permanece pendente.
+
+O usuário confirmou posteriormente o funcionamento do progresso, volume total/percentual
+e conclusão validada do download FFmpeg/FFprobe na máquina limpa.
+
+## Quarto recorte — revisão visual e identidade
+
+Autorizado pelo usuário após a aceitação do fluxo de componentes. Referência atual do
+ícone: `tests/base_para_icone.jpg`, fornecida pelo usuário e preservada como arquivo local.
+
+- Paleta azul-petróleo com superfícies claras suavizadas, tipografia Segoe UI,
+  hierarquia de títulos, espaçamentos e foco por teclado visível.
+- Áreas Preparar download e Fila delimitadas; formato/resolução e formato/qualidade
+  de áudio dispostos em pares. Campos afastados da rolagem; largura dos seletores
+  proporcional. Campo de resultado oculto até haver um caminho e orientação na fila vazia.
+- Menus Arquivo, Exibir e Ajuda, traduzidos. Reutilizam seleção de destino,
+  salvamento explícito, componentes, ajuda e fechamento/cancelamento existentes.
+  Exibir controla os painéis avançado e de detalhes. Ações incompatíveis continuam
+  bloqueadas durante a fila; idioma também permanece bloqueado nesse estado.
+- Estilos compartilhados nas janelas principal, Componentes, Ajuda e playlist.
+  Controles continuam WPF; templates leves de botão/seleção, sem biblioteca adicional.
+- Cata-vento e seta de download gerados com imagegen; PNG transparente e ICO com nove
+  tamanhos. Integrados ao executável, janela principal, Ajuda/Sobre, atalhos e configuração
+  do Setup. Origem e prompt em `src/CataMedia.Desktop/Assets/README.md`.
+- Ao iniciar, dimensões limitadas à área útil informada pelo Windows. Mudanças de alto
+  contraste substituem a paleta por cores do sistema; não foi alterada a configuração
+  de acessibilidade do computador para testar.
+
+Critérios: [diretrizes Windows](https://learn.microsoft.com/en-us/windows/apps/design/guidelines-overview),
+[texto acessível](https://learn.microsoft.com/en-us/windows/apps/design/accessibility/accessible-text-requirements)
+e [design inclusivo](https://learn.microsoft.com/en-us/windows/apps/design/accessibility/designing-inclusive-software).
+Contraste calculado para a paleta padrão: texto principal/campo 11,25:1; secundário/superfície
+5,74:1; texto do botão primário 6,00:1; contorno de campo 3,02:1. Isso não substitui
+validação completa com leitor de tela e temas reais do Windows.
+
+Validação: 92 testes aprovados, quatro reais opcionais ignorados; build sem avisos ou erros.
+Novos casos cobrem menu/idioma, salvamento explícito pelo menu, painéis, bloqueio durante
+fila e abertura/fechamento do seletor pela interface de automação de acessibilidade.
+Telas renderizadas e inspecionadas em PT-BR/EN, vídeo/áudio, janela mínima 1000×700,
+opções avançadas, aviso inicial, Ajuda, Componentes e playlist. Ampliação de layout 125%
+e paleta de alto contraste foram simuladas; não representam testes de DPI/tema no Windows.
+Evidências locais em `artifacts/stage6-visual/`.
+
+Inno Setup aceitou o novo ICO em compilação isolada com payload mínimo. Esse instalador
+de teste NÃO contém o runtime completo, não foi executado e não é uma distribuição.
+Pasta autossuficiente para avaliação: `artifacts/stage6-visual-preview/`.
+Não foram gerados novos pacotes oficiais, tags, releases, merges ou limpeza.
+Aceitação visual na máquina limpa, teclado completo/leitor de tela, DPI real e os demais
+cenários de distribuição continuam pendentes. Este recorte não conclui a etapa 6.

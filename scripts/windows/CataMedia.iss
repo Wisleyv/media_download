@@ -21,6 +21,7 @@ OutputBaseFilename=CataMedia-Setup-{#AppVersion}-win-x64
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+SetupIconFile={#Payload}\Assets\CataMedia.ico
 UninstallDisplayIcon={app}\CataMedia.exe
 CloseApplications=yes
 RestartApplications=no

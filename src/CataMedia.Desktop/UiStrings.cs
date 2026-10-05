@@ -4,6 +4,15 @@ public static class UiStrings
 {
     public static IReadOnlyDictionary<string, (string Pt, string En)> Values { get; } = new Dictionary<string, (string, string)>
     {
+        ["MainMenu"] = ("Menu principal", "Main menu"),
+        ["FileMenu"] = ("_Arquivo", "_File"),
+        ["ViewMenu"] = ("_Exibir", "_View"),
+        ["HelpMenu"] = ("A_juda", "_Help"),
+        ["Exit"] = ("_Sair", "E_xit"),
+        ["BrandSubtitle"] = ("Seus vídeos e áudios, no formato que você escolher.", "Your videos and audio, in the format you choose."),
+        ["PrepareTitle"] = ("Preparar download", "Prepare download"),
+        ["QueueHint"] = ("Acompanhe o andamento e selecione um item para ver o resultado.", "Follow progress and select an item to see its result."),
+        ["EmptyQueue"] = ("Sua fila aparecerá aqui.\nCole os links ao lado e clique em Baixar para começar.", "Your queue will appear here.\nPaste links on the left and click Download to begin."),
         ["Help"] = ("Ajuda / Sobre", "Help / About"),
         ["Credits"] = ("Desenvolvimento: Wisley Vilela. Licença MIT.", "Developed by Wisley Vilela. MIT license."),
         ["Manual"] = ("Manual no GitHub", "Manual on GitHub"),
