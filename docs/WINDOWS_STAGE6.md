@@ -308,3 +308,7 @@ consulta bem-sucedida confirmar a versão atual. 21 testes de interface aprovado
 incluindo regressão do aviso e lote com linhas em branco. RELEASING.md corrigido para
 PowerShell 7 (pwsh); o script usa APIs indisponíveis no Windows PowerShell 5.1 e deve
 ser executado da raiz do checkout, conforme instruído. Link do manual já corrigido.
+
+Preservado detalhe técnico limitado na mensagem de falha de inicialização. Fortalecido
+um teste de contenção do destino: arquivo externo agora existe e tem metadados válidos,
+para que a rejeição dependa da verificação do caminho, não da ausência do arquivo.
