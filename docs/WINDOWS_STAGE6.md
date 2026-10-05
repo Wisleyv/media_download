@@ -232,3 +232,13 @@ Para corrigir Manual no GitHub, publicar primeiro este conjunto de documentaçã
 autorizada e fixar o link do aplicativo no SHA desse commit em uma mudança subsequente.
 Assim o manual e suas imagens estarão acessíveis antes de qualquer merge/tag/release e
 não dependerão da sobrevivência de uma branch temporária. Não houve limpeza de arquivos.
+
+Documentação publicada no commit `d623ae54043c1f4c99359adf611baa28b56dc4df`.
+Link Manual no GitHub corrigido para esse SHA. Página e conteúdo raw conferidos com HTTP
+200; as dez imagens estão na árvore remota do mesmo commit. 33 links locais de documentos
+e imagens conferidos; capturas inspecionadas. Build sem avisos ou erros e 20 testes de
+interface aprovados após a troca do endereço. Não há mudança no motor de download.
+
+Compilação de avaliação com guia local atualizado: `artifacts/stage6-documentation-preview/`.
+Pendência 2 concluída neste recorte; versão final, empacotamento/validações, integração de
+PRs, GitHub Release e sanitização continuam pendentes. Nenhum merge, tag ou release realizado.

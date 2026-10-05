@@ -49,7 +49,7 @@ public partial class MainWindow : Window
         panel.Children.Add(new System.Windows.Controls.Image { Source = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/CataMedia;component/Assets/CataMedia.png")), Width = 64, Height = 64, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 12) });
         panel.Children.Add(new TextBlock { Text = "CataMedia " + version, FontSize = 20, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
         panel.Children.Add(new TextBlock { Text = T("Credits"), Margin = new Thickness(0, 8, 0, 12) });
-        AddLink("Manual", "https://github.com/Wisleyv/media_download/blob/feature/windows-dotnet-stage5/docs/WINDOWS_GUIDE.md");
+        AddLink("Manual", "https://github.com/Wisleyv/media_download/blob/d623ae54043c1f4c99359adf611baa28b56dc4df/docs/WINDOWS_GUIDE.md");
         var guide = Path.Combine(AppContext.BaseDirectory, "GUIDE.txt");
         if (File.Exists(guide)) AddLink("LocalGuide", guide);
         AddLink("AppReleases", "https://github.com/Wisleyv/media_download/releases");
