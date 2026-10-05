@@ -11,6 +11,47 @@ namespace CataMedia.Tests;
 
 public sealed class WindowTests
 {
+    [Fact]
+    public void OfflineStartupCheckKeepsDownloadAvailableAndWindowConstructionDoesNotUseNetwork()
+    {
+        OnStaThread(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "CataMedia-offline-" + Guid.NewGuid().ToString("N"));
+            using var handler = new OfflineHandler();
+            using var client = new System.Net.Http.HttpClient(handler);
+            var manager = new DependencyManager(root, client, new VersionRunner());
+            var window = new MainWindow(new(DistributionMode.Portable, root, Path.Combine(root, "temp")), dependencyManager: manager);
+            try
+            {
+                Assert.Equal(0, handler.Calls);
+                ((TextBox)window.FindName("YtDlpPath")).Text = Path.Combine(root, "yt-dlp.exe");
+                ((TextBox)window.FindName("NodePath")).Text = "";
+                var check = window.CheckStartupComponentsAsync();
+                PumpUntil(() => check.IsCompleted);
+                check.GetAwaiter().GetResult();
+                Assert.Equal(1, handler.Calls);
+                Assert.True(((Button)window.FindName("DownloadButton")).IsEnabled);
+                Assert.Equal(Visibility.Visible, ((StackPanel)window.FindName("ComponentBanner")).Visibility);
+                ((ComboBox)window.FindName("LanguageChoice")).SelectedIndex = 1;
+                Assert.Contains("missing", ((TextBlock)window.FindName("ComponentNotice")).Text);
+                Assert.False(File.Exists(Path.Combine(root, "preferences.json")));
+            }
+            finally { window.Close(); if (Directory.Exists(root)) Directory.Delete(root, true); }
+        });
+    }
+
+    private sealed class OfflineHandler : System.Net.Http.HttpMessageHandler
+    {
+        public int Calls;
+        protected override Task<System.Net.Http.HttpResponseMessage> SendAsync(System.Net.Http.HttpRequestMessage request, CancellationToken cancellationToken)
+        { Calls++; throw new System.Net.Http.HttpRequestException("Offline fixture"); }
+    }
+    private sealed class VersionRunner : IProcessRunner
+    {
+        public Task<int> RunAsync(ProcessCommand command, Action<string> standardOutput, Action<string> standardError, CancellationToken cancellationToken)
+        { standardOutput("2026.08.19"); return Task.FromResult(0); }
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -94,11 +135,14 @@ public sealed class WindowTests
                 var start = (Button)window.FindName("DownloadButton");
                 start.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Assert.False(start.IsEnabled);
+                Assert.False(((Button)window.FindName("ComponentsButton")).IsEnabled);
+                Assert.False(((Button)window.FindName("ComponentUpdateButton")).IsEnabled);
                 Assert.Equal(1080, service.Request?.MaximumHeight);
                 if (close) window.Close();
                 else if (cancel) ((Button)window.FindName("CancelButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 else service.Complete(new(Path.Combine(root, "video.mp4"), 1080, 12));
                 PumpUntil(() => start.IsEnabled);
+                Assert.True(((Button)window.FindName("ComponentsButton")).IsEnabled);
                 Assert.Equal(!cancel, ((Button)window.FindName("OpenFolderButton")).IsEnabled);
                 var status = ((TextBlock)window.FindName("StatusLabel")).Text;
                 Assert.Contains(cancel ? "Cancelado" : "Concluído", status);

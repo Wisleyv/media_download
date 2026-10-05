@@ -14,7 +14,9 @@ public partial class App : Application
         {
             var paths = ApplicationPaths.Resolve(AppContext.BaseDirectory,
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
-            new MainWindow(paths).Show();
+            var window = new MainWindow(paths);
+            window.Show();
+            _ = window.CheckStartupComponentsAsync();
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
         {

@@ -9,6 +9,11 @@
         </Grid.RowDefinitions>
         <StackPanel Grid.Row="0"><TextBlock Text="CataMedia" FontSize="28" FontWeight="SemiBold" />
             <TextBlock Text="{DynamicResource Hint}" TextWrapping="Wrap" Margin="0,8,0,12" />
+            <StackPanel x:Name="ComponentBanner" Visibility="Collapsed" Margin="0,0,0,8">
+                <TextBlock x:Name="ComponentNotice" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
+                <WrapPanel><Button x:Name="ComponentUpdateButton" Content="{DynamicResource InstallUpdate}" Click="Components_Click" Padding="8,4" />
+                    <Button Content="{DynamicResource Later}" Click="Later_Click" Margin="8,0,0,0" Padding="8,4" /></WrapPanel>
+            </StackPanel>
             </StackPanel>
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
@@ -105,6 +110,7 @@
 </Grid>
 <StackPanel Grid.Row="2">
 <WrapPanel Margin="0,8,0,12">
+                <Button x:Name="ComponentsButton" Content="{DynamicResource Components}" Click="Components_Click" Padding="12,8" Margin="0,0,8,0" />
                 <Button x:Name="DownloadButton" Content="{DynamicResource Download}" Click="Download_Click" AutomationProperties.AutomationId="Download" Padding="12,8" Margin="0,0,8,0" />
                 <Button x:Name="CancelButton" Content="{DynamicResource Cancel}" Click="Cancel_Click" AutomationProperties.AutomationId="Cancel" IsEnabled="False" Padding="12,8" Margin="0,0,8,0" />
                 <Button x:Name="RetryButton" Content="{DynamicResource Retry}" Click="Retry_Click" IsEnabled="False" Padding="12,8" Margin="0,0,8,0" />
