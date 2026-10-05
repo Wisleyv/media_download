@@ -42,6 +42,7 @@ Veja / See [TUTORIAL.md](TUTORIAL.md)
 
 ## Notas / Notes
 
+- O yt-dlp.exe não é incluído no código-fonte nem no pacote do CataMedia. Use "Baixar/Atualizar" para obter a versão estável mais recente diretamente do GitHub oficial e escolha a pasta de instalação. / yt-dlp.exe is not included in the source tree or CataMedia package. Use "Download/Update" to obtain the latest stable version directly from the official GitHub repository and choose the installation folder.
 - As configurações ficam em / Settings are stored in `%APPDATA%\catamedia\settings.json`
 - Logs são criados na pasta de saída ao rodar downloads / Logs are created in the output folder when downloads run
 - O idioma escolhido é salvo automaticamente / The chosen language is saved automatically
