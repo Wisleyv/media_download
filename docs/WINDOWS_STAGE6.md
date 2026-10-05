@@ -208,3 +208,27 @@ Compilação autossuficiente para avaliação: `artifacts/stage6-app-update-chec
 Este recorte resolve somente a pendência 1. Documentação geral de apresentação, referência
 publicada do manual, validações de distribuição, integração de PRs, release e sanitização
 continuam pendentes; nenhum merge, tag ou release realizado.
+
+## Pendência 2 de encerramento — documentação
+
+Apresentação e tutoriais Markdown atualizados para C# 3.x. Guia PT-BR/EN cobre instalador
+e portátil, dependências separadas, progresso, formatos/resolução, fila, playlists,
+cancelamento, menus, preferências explícitas, cookies, atualizações, dados e recuperação.
+Corrigidas as afirmações legadas sobre logs automáticos, salvamento automático, lançamento
+por VBS/BAT e qualidade WAV/FLAC. Caminhos manuais não persistidos e verificações ainda
+pendentes são descritos sem prometer aceitação que não ocorreu.
+
+Dez capturas WPF em `docs/images/`, com caminhos genéricos e dados ilustrativos, acompanham
+as duas línguas. Origem e limites das imagens em `docs/images/README.md`. PDFs/RTF antigos
+identificados como documentação PowerShell; preservados para o inventário de encerramento.
+O guia offline continua textual, com imagens disponíveis na referência online.
+
+RELEASING.md distingue empacotamento C#/PowerShell e descreve checkout limpo, versão/commit,
+testes, payload comum, manifesto, hashes, licenças, limites e publicação explícita de prévia.
+Não executar essas ações por documentá-las. A compatibilidade Windows é apresentada como
+alvo/limite técnico, sem confundir aceitação do instalador com suporte genérico do .NET.
+
+Para corrigir Manual no GitHub, publicar primeiro este conjunto de documentação na branch
+autorizada e fixar o link do aplicativo no SHA desse commit em uma mudança subsequente.
+Assim o manual e suas imagens estarão acessíveis antes de qualquer merge/tag/release e
+não dependerão da sobrevivência de uma branch temporária. Não houve limpeza de arquivos.

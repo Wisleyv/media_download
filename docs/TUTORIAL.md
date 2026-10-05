@@ -1,65 +1,34 @@
-# Tutorial Passo-a-Passo / Step-by-Step Tutorial
+# CataMedia — início rápido / quick start
 
-> Este guia ajuda usuários não técnicos a executar o CataMedia no Windows.
-> This guide helps non-technical users run CataMedia on Windows.
+Este tutorial é para **C# 3.x Windows x64**, não para os scripts PowerShell 2.x.
+This tutorial covers **C# 3.x Windows x64**, not the PowerShell 2.x scripts.
 
-## 1) Baixar o pacote / Download the package
+## Português
 
-- Acesse a página de releases no GitHub do projeto. / Go to the project's GitHub releases page.
-- Baixe o arquivo `.zip` mais recente. / Download the latest `.zip` file.
-- Extraia o `.zip` em uma pasta simples (exemplo: `C:\catamedia`). / Extract the `.zip` to a simple folder (e.g., `C:\catamedia`).
+1. Na [página oficial de releases](https://github.com/Wisleyv/media_download/releases), escolha uma release **C# Windows 3.x** quando disponível. Uma prévia estará identificada como *Pre-release*. Confira origem e `SHA256SUMS.txt`.
+2. Execute o instalador por usuário, ou extraia **todo** o ZIP portátil em uma pasta gravável. Abra pelo menu Iniciar ou por `CataMedia.exe`. O .NET está incluído.
+3. Abra **Componentes**. Escolha yt-dlp, confira a consulta e confirme **Obter / atualizar**. Repita com FFmpeg + FFprobe e Node.js na mesma janela; não é necessário reiniciar.
+4. Cole um link por linha. Escolha **Salvar em**, formato e resolução máxima ou qualidade MP3. WAV e FLAC não recuperam qualidade perdida na origem.
+5. Clique em **Baixar**. Se aparecer confirmação de playlist, escolha a lista ou o vídeo individual. Acompanhe a fila; ao concluir, selecione o item e use **Abrir pasta**.
+6. Para guardar idioma e escolhas, use **Salvar preferências** ou **Arquivo → Salvar preferências**. Alterações não são salvas automaticamente.
 
-## 2) Executar / Run
+![Preparação em português](images/main-pt.png)
 
-- Dê duplo clique em `catamedia.vbs` (sem janela de console). / Double-click `catamedia.vbs` (no console window).
-- Alternativa: `catamedia.bat` (mostra console de fundo). / Alternative: `catamedia.bat` (shows background console).
-- Se o Windows SmartScreen aparecer, clique em "Mais informações" e depois em "Executar assim mesmo". / If Windows SmartScreen appears, click "More info" then "Run anyway".
+Se houver falha, selecione o item e abra **Detalhes do item selecionado**. Corrija a causa
+antes de usar **Repetir falhas**. Não desative antivírus nem crie exceções gerais.
+Leia o [guia completo](WINDOWS_GUIDE.md) para atualização, dados, cookies e solução de problemas.
 
-## 3) Idioma / Language
+## English
 
-- No canto superior, use o seletor `PT-BR / EN` para trocar o idioma da interface. / At the top, use the `PT-BR / EN` selector to switch the UI language.
-- A escolha é salva automaticamente. / The choice is saved automatically.
+1. On the [official releases page](https://github.com/Wisleyv/media_download/releases), choose a **C# Windows 3.x** release when available. A preview is marked *Pre-release*. Verify its source and `SHA256SUMS.txt`.
+2. Run the per-user installer, or extract the **entire** portable ZIP into a writable folder. Launch from Start or `CataMedia.exe`. .NET is bundled.
+3. Open **Components**. Select yt-dlp, review the check and confirm **Get / update**. Repeat for FFmpeg + FFprobe and Node.js in the same window; no restart is needed.
+4. Paste one link per line. Choose **Save to**, format and maximum resolution or MP3 quality. WAV and FLAC cannot restore quality lost at the source.
+5. Click **Download**. If asked about a playlist, choose the list or individual video. Follow the queue; after completion, select the item and use **Open folder**.
+6. Use **Save preferences** or **File → Save preferences** to retain language and choices. Changes are not saved automatically.
 
-## 4) Configurar / Configure
+![Preparation in English](images/main-en.png)
 
-- Cole as URLs (uma por linha) no campo principal. / Paste URLs (one per line) in the main field.
-- Clique em "Escolher Pasta" e selecione onde salvar os arquivos. / Click "Choose Folder" and select where to save files.
-- Em "Tipo de download", escolha: / Under "Download type", choose:
-	- "Vídeo" / "Video": baixa em MP4 (720p/1080p) / downloads as MP4 (720p/1080p)
-	- "Áudio" / "Audio": baixa apenas o áudio (mp3/wav/flac) / downloads audio only (mp3/wav/flac)
-- Se o yt-dlp.exe não estiver encontrado, clique em "Baixar/Atualizar". / If yt-dlp.exe is not found, click "Download/Update".
-
-## 5) FFmpeg (recomendado / obrigatório para áudio | recommended / required for audio)
-
-- No modo "Vídeo": o FFmpeg melhora a qualidade e junta áudio+vídeo em um único MP4. / In "Video" mode: FFmpeg improves quality and merges audio+video into a single MP4.
-- No modo "Áudio": é necessário ter FFmpeg + FFprobe para converter para mp3/wav/flac. / In "Audio" mode: FFmpeg + FFprobe are required to convert to mp3/wav/flac.
-- Se não estiver instalado, o app oferece baixar o FFmpeg portátil na pasta do yt-dlp.exe. / If not installed, the app offers to download portable FFmpeg to the yt-dlp.exe folder.
-- Enquanto baixa/extrai, a barra de progresso fica animada (o app não trava). / While downloading/extracting, the progress bar animates (the app doesn't freeze).
-
-## 6) Baixar / Download
-
-- Se em "Vídeo": escolha a qualidade (720p ou 1080p). / If in "Video": choose quality (720p or 1080p).
-- Se em "Áudio" / If in "Audio":
-	- Escolha o formato (mp3, wav ou flac) / Choose format (mp3, wav, or flac)
-	- Escolha a qualidade (Baixa / Padrão / HQ) / Choose quality (Low / Standard / HQ)
-		- Para mp3: HQ=0, Padrão=5, Baixa=7 (`--audio-quality` do yt-dlp) / For mp3: HQ=0, Standard=5, Low=7 (yt-dlp `--audio-quality`)
-		- Para wav/flac: qualidade lossless, preset não muda muito / For wav/flac: lossless quality, preset has little effect
-- Clique em "Baixar Tudo" / "Download All". / Click "Baixar Tudo" / "Download All".
-- Acompanhe o status e progresso na tela. / Follow progress and status on screen.
-
-## 7) Avisos (opcional) / Warnings (optional)
-
-- Por padrão, os avisos técnicos ficam ocultos. / By default, technical warnings are hidden.
-- Marque "Mostrar avisos (avançado)" para ver detalhes no log. / Check "Show warnings (advanced)" for log details.
-
-## 8) Logs e configurações / Logs and settings
-
-- Os logs são gravados na pasta de saída. / Logs are saved to the output folder.
-- As configurações ficam em `%APPDATA%\catamedia\settings.json`. / Settings are at `%APPDATA%\catamedia\settings.json`.
-
-## Solução de problemas / Troubleshooting
-
-- "yt-dlp.exe não encontrado" / "yt-dlp.exe not found": use o botão "Baixar/Atualizar" ou selecione manualmente. / use "Download/Update" button or browse manually.
-- Qualidade baixa / Low quality: instale o FFmpeg quando o app oferecer. / install FFmpeg when the app offers.
-- Antivírus bloqueando / Antivirus blocking: adicione exceção para a pasta do programa. / add exception for the program folder.
-- Falha em vídeo específico / Specific video failure: tente outro link para testar. / try a different link to test.
+For a failure, select the item and expand **Selected item details**. Address the cause
+before using **Retry failed items**. Do not disable antivirus or add broad exclusions.
+See the [full guide](WINDOWS_GUIDE.md) for updates, data, cookies and troubleshooting.
