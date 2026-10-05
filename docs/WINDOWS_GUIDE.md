@@ -24,6 +24,9 @@ ao lado de CataMedia.exe e nas pastas do PATH; não procura em todo o computador
 1. Abra Componentes; verifique e obtenha yt-dlp, FFmpeg + FFprobe e Node.js.
    São downloads externos opcionais, com confirmação e validação. Dependências já existentes
    podem ser escolhidas nas opções avançadas. Uma conexão é necessária para obter componentes e mídia.
+   Ao abrir a janela ou selecionar outro componente, a versão é consultada automaticamente.
+   Depois de instalar um item, escolha o próximo na mesma lista. Não é necessário fechar
+   nem reiniciar o programa. Verificar agora repete a consulta se houver falha de conexão.
 2. Cole um ou mais links, um por linha. Escolha o destino e vídeo MP4 ou áudio MP3/WAV/FLAC.
 3. Confira resolução máxima ou qualidade, depois clique Baixar. Uma fonte pode oferecer resolução menor.
 4. Aguarde a fila. Abra a pasta ao terminar. Falhas aparecem nos detalhes; é possível repetir as falhas.
@@ -72,6 +75,9 @@ Automatic discovery checks CataMedia's dependency storage, the application folde
 it does not search the entire computer.
 
 Open Components to check and obtain yt-dlp, FFmpeg + FFprobe and Node.js with confirmation.
+Versions are checked automatically when the window opens or another component is selected.
+After installing an item, select the next one in the same list; no restart is needed.
+Check now retries the check if the connection fails.
 Alternatively select existing tools in Advanced options. Paste one link per line, choose
 the output folder, format and maximum resolution/audio quality, then Download. Use Open folder
 after completion. The sequential queue supports cancellation and retrying failures.

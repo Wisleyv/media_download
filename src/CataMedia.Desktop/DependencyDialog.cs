@@ -36,19 +36,9 @@ public sealed class DependencyDialog : Window
         var cancel = new Button { Content = T("Close"), Margin = new(0, 10, 0, 0), Padding = new(8) };
         cancel.Click += (_, _) => Close(); panel.Children.Add(cancel);
         Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-        choice.SelectionChanged += (_, _) => Reset();
-        check.Click += async (_, _) => await RunAsync(async () =>
-        {
-            release = null; installedVersion = null;
-            var executable = current(Kind);
-            if (executable is not null)
-            {
-                try { installedVersion = await manager.ReadVersionAsync(Kind, executable, lifetime.Token); }
-                catch (Exception error) when (Recoverable(error)) { }
-            }
-            release = await manager.CheckAsync(Kind, true, lifetime.Token);
-            details.Text = string.Format(T("Versions"), installedVersion ?? T("NotAvailable"), release.Version) + "\n" + release.Source;
-        });
+        choice.SelectionChanged += async (_, _) => { Reset(); await CheckSelectedAsync(); };
+        Loaded += async (_, _) => await CheckSelectedAsync();
+        check.Click += async (_, _) => await CheckSelectedAsync();
         install.Click += async (_, _) =>
         {
             if (release is null || busy) return;
@@ -59,7 +49,8 @@ public sealed class DependencyDialog : Window
             await RunAsync(async () =>
             {
                 var path = await manager.InstallAsync(selected, new Progress<string>(key => { if (busy && release is not null) details.Text = T(key); }), lifetime.Token);
-                activated(selected.Kind, path); release = null; details.Text = T("ComponentActivated");
+                activated(selected.Kind, path); release = null;
+                details.Text = string.Format(T("ComponentReadyNext"), choice.SelectedItem, selected.Version);
             });
         };
         rollback.Click += async (_, _) =>
@@ -80,6 +71,19 @@ public sealed class DependencyDialog : Window
     }
 
     private void Reset() { release = null; installedVersion = null; details.Text = T("CheckComponentsHint"); UpdateButtons(); }
+    private Task CheckSelectedAsync() => RunAsync(async () =>
+    {
+        release = null; installedVersion = null;
+        var executable = current(Kind);
+        if (executable is not null)
+        {
+            try { installedVersion = await manager.ReadVersionAsync(Kind, executable, lifetime.Token); }
+            catch (Exception error) when (Recoverable(error)) { }
+        }
+        release = await manager.CheckAsync(Kind, true, lifetime.Token);
+        details.Text = string.Format(T("Versions"), installedVersion ?? T("NotAvailable"), release.Version)
+            + "\n" + release.Source + "\n\n" + T("ComponentCheckResultHint");
+    });
     private void UpdateButtons()
     {
         choice.IsEnabled = check.IsEnabled = rollback.IsEnabled = !busy;

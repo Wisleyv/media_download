@@ -52,3 +52,29 @@ Não foi repetido o piloto em máquina limpa com esta correção.
 
 Branch `feature/windows-dotnet-stage6`, baseada no encerramento da etapa 5,
 commit `a753b64505557ea849d629632e4629b4c6d79376`. Nenhum pacote novo gerado neste recorte.
+
+## Segundo recorte — continuidade da preparação
+
+Imagens locais `tests/1.png`, `tests/2.png` e `tests/3.png` fornecidas pelo usuário
+mostram o aviso inicial, a janela de componentes com Node selecionado e o retorno à
+tela principal sem aviso. O usuário relata necessidade de reiniciar entre instalações.
+No código, não foi encontrado fechamento automático na seleção ou após a instalação;
+esse detalhe permanece sem reprodução. Confirmado o ocultamento incondicional do aviso
+ao fechar a janela de componentes, mesmo com itens ausentes.
+
+Correções: consultar automaticamente ao abrir a janela e trocar o componente; explicar
+como instalar o próximo item sem sair; conferir novamente os componentes ao retornar à
+tela principal e listar os ausentes ou incompatíveis. Download continua exigindo confirmação.
+Textos PT-BR/EN e guia acompanham o fluxo.
+
+PATH: alterar variáveis do usuário não exige a permissão necessária ao escopo de máquina
+([Microsoft](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_environment_variables)).
+Não alterar PATH neste recorte: CataMedia já usa caminhos explícitos e versões gerenciadas.
+Expor pastas de versões exigiria atualizar entradas após ativação/retorno e tratar remoção
+ou mudança de localização do portátil, com possível interferência em outras instalações.
+O benefício seria uso das ferramentas por outros aplicativos, fora da preparação do CataMedia.
+
+Validação: 89 testes aprovados, quatro testes reais opcionais ignorados; build Release sem
+avisos ou erros. Testes verificam consulta ao selecionar os três itens, repetição offline,
+janela mantida aberta e reabertura do diálogo com orientação preservada na tela principal.
+A instalação real sequencial na máquina limpa permanece para repetição pelo usuário.

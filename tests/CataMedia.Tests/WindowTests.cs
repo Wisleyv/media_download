@@ -11,6 +11,40 @@ namespace CataMedia.Tests;
 
 public sealed class WindowTests
 {
+    [Fact]
+    public void ComponentSelectionChecksEachItemWithoutClosingDialogAndAllowsOfflineRetry()
+    {
+        OnStaThread(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "CataMedia-dialog-" + Guid.NewGuid().ToString("N"));
+            using var handler = new OfflineHandler();
+            using var client = new System.Net.Http.HttpClient(handler);
+            var dialog = new DependencyDialog(new(root, client, new VersionRunner()), "pt-BR", _ => null,
+                (_, _) => throw new InvalidOperationException("An offline check must not activate a component."));
+            try
+            {
+                SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+                dialog.Show();
+                var panel = (StackPanel)((ScrollViewer)dialog.Content).Content;
+                var choice = panel.Children.OfType<ComboBox>().Single();
+                var check = panel.Children.OfType<Button>().First();
+                for (var index = 0; index < 3; index++)
+                {
+                    choice.SelectedIndex = index;
+                    PumpUntil(() => handler.Calls == index + 1 && check.IsEnabled);
+                    Assert.True(dialog.IsVisible);
+                    Assert.True(choice.IsEnabled);
+                    Assert.Contains("Não foi possível", panel.Children.OfType<TextBlock>().Last().Text);
+                }
+                check.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                PumpUntil(() => handler.Calls == 4 && check.IsEnabled);
+                Assert.True(dialog.IsVisible);
+                Assert.False(File.Exists(Path.Combine(root, "preferences.json")));
+            }
+            finally { dialog.Close(); if (Directory.Exists(root)) Directory.Delete(root, true); }
+        });
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -43,7 +77,9 @@ public sealed class WindowTests
                 Assert.Equal(Visibility.Visible, ((StackPanel)window.FindName("ComponentBanner")).Visibility);
                 Assert.Contains("Faltam componentes", ((TextBlock)window.FindName("ComponentNotice")).Text);
                 ((ComboBox)window.FindName("LanguageChoice")).SelectedIndex = 1;
-                Assert.Contains("not included", ((TextBlock)window.FindName("ComponentNotice")).Text);
+                Assert.Contains("FFmpeg + FFprobe", ((TextBlock)window.FindName("ComponentNotice")).Text);
+                Assert.Contains("same window", ((TextBlock)window.FindName("ComponentNotice")).Text);
+                if (incompleteFfmpegPair) Assert.DoesNotContain("Node.js", ((TextBlock)window.FindName("ComponentNotice")).Text);
                 Assert.True(((Button)window.FindName("DownloadButton")).IsEnabled);
                 Assert.False(File.Exists(Path.Combine(root, "preferences.json")));
             }
@@ -92,6 +128,23 @@ public sealed class WindowTests
                 Assert.Equal(Visibility.Visible, ((StackPanel)window.FindName("ComponentBanner")).Visibility);
                 ((ComboBox)window.FindName("LanguageChoice")).SelectedIndex = 1;
                 Assert.Contains("missing", ((TextBlock)window.FindName("ComponentNotice")).Text);
+                window.Show();
+                for (var attempt = 0; attempt < 2; attempt++)
+                {
+                    var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(10) };
+                    timer.Tick += (_, _) =>
+                    {
+                        var dialog = window.OwnedWindows.OfType<DependencyDialog>().SingleOrDefault();
+                        if (dialog is null) return;
+                        timer.Stop(); dialog.Close();
+                    };
+                    timer.Start();
+                    try { ((Button)window.FindName("ComponentUpdateButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); }
+                    finally { timer.Stop(); }
+                    PumpUntil(() => ((StackPanel)window.FindName("ComponentBanner")).Visibility == Visibility.Visible);
+                    Assert.True(window.IsVisible);
+                    Assert.Contains("missing", ((TextBlock)window.FindName("ComponentNotice")).Text);
+                }
                 Assert.False(File.Exists(Path.Combine(root, "preferences.json")));
             }
             finally { window.Close(); if (Directory.Exists(root)) Directory.Delete(root, true); }

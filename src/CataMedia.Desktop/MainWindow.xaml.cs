@@ -19,7 +19,7 @@ public partial class MainWindow : Window
     private readonly DependencyManager dependencies;
     private readonly CancellationTokenSource componentLifetime = new();
     private bool checkingComponents;
-    private string componentNoticeKey = "MissingComponents";
+    private string componentNoticeKey = "Ready";
     private object[] componentNoticeArguments = [];
     private readonly DownloadQueue downloadQueue;
     private readonly IMediaLinkResolver linkResolver;
@@ -134,14 +134,20 @@ public partial class MainWindow : Window
         checkingComponents = true;
         try
         {
-            var missing = Enum.GetValues<DependencyKind>().Any(kind => CurrentComponent(kind) is not { } path || !File.Exists(path));
-            if (CurrentComponent(DependencyKind.Ffmpeg) is { } ffmpeg && !File.Exists(Path.Combine(Path.GetDirectoryName(ffmpeg)!, "ffprobe.exe"))) missing = true;
+            var missingKinds = Enum.GetValues<DependencyKind>()
+                .Where(kind => CurrentComponent(kind) is not { } path || !File.Exists(path)).ToList();
+            if (CurrentComponent(DependencyKind.Ffmpeg) is { } ffmpeg && !File.Exists(Path.Combine(Path.GetDirectoryName(ffmpeg)!, "ffprobe.exe"))
+                && !missingKinds.Contains(DependencyKind.Ffmpeg)) missingKinds.Add(DependencyKind.Ffmpeg);
             if (CurrentComponent(DependencyKind.Node) is { } node)
             {
                 try { await dependencies.ReadVersionAsync(DependencyKind.Node, node, componentLifetime.Token); }
-                catch (Exception error) when (DependencyDialog.Recoverable(error)) { missing = true; }
+                catch (Exception error) when (DependencyDialog.Recoverable(error))
+                { if (!missingKinds.Contains(DependencyKind.Node)) missingKinds.Add(DependencyKind.Node); }
             }
-            if (missing) ShowComponentNotice("MissingComponents");
+            var missing = missingKinds.Count > 0;
+            if (missing) ShowComponentNotice("MissingComponents", string.Join(", ", missingKinds.Select(kind => kind switch
+                { DependencyKind.YtDlp => "yt-dlp", DependencyKind.Ffmpeg => "FFmpeg + FFprobe", _ => "Node.js" })));
+            else if (componentNoticeKey == "MissingComponents") ComponentBanner.Visibility = Visibility.Collapsed;
             var executable = CurrentComponent(DependencyKind.YtDlp);
             string? installed = null;
             if (executable is not null)
@@ -167,12 +173,12 @@ public partial class MainWindow : Window
         ComponentBanner.Visibility = Visibility.Visible;
     }
 
-    private void Components_Click(object sender, RoutedEventArgs e)
+    private async void Components_Click(object sender, RoutedEventArgs e)
     {
         if (activeDownload is not null) return;
         var dialog = new DependencyDialog(dependencies, UiLanguage, CurrentComponent, ActivateComponent) { Owner = this };
         dialog.ShowDialog();
-        ComponentBanner.Visibility = Visibility.Collapsed;
+        await CheckStartupComponentsAsync();
     }
     private void Later_Click(object sender, RoutedEventArgs e) => ComponentBanner.Visibility = Visibility.Collapsed;
 
