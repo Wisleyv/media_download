@@ -17,9 +17,13 @@ public partial class MainWindow : Window
     private readonly ApplicationPaths paths;
     private readonly System.Net.Http.HttpClient dependencyClient;
     private readonly DependencyManager dependencies;
+    private readonly AppReleaseChecker appUpdates;
+    private AppRelease? latestAppRelease;
+    private string appCheckKey = "AppCheckNotChecked";
+    private object[] appCheckArguments = [];
     private readonly CancellationTokenSource componentLifetime = new();
     private bool checkingComponents;
-    private string componentNoticeKey = "MissingComponents";
+    private string componentNoticeKey = "Ready";
     private object[] componentNoticeArguments = [];
     private readonly DownloadQueue downloadQueue;
     private readonly IMediaLinkResolver linkResolver;
@@ -32,19 +36,35 @@ public partial class MainWindow : Window
     private object[] statusArguments = [];
     private string UiLanguage => LanguageChoice.SelectedIndex == 1 ? "en" : "pt";
     private string T(string key) => UiStrings.Get(key, UiLanguage);
+    private static string ApplicationVersion => typeof(MainWindow).Assembly.GetCustomAttributes(false)
+        .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().Single().InformationalVersion;
     private void Help_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new Window { Title = T("Help"), Owner = this, Width = 490, Height = 330,
+        var dialog = new Window { Title = T("Help"), Owner = this, Width = 560, Height = 620,
             WindowStartupLocation = WindowStartupLocation.CenterOwner };
+        dialog.SetResourceReference(StyleProperty, "WindowStyle");
+        dialog.Icon = Icon;
         var panel = new StackPanel { Margin = new Thickness(20) };
-        var version = typeof(MainWindow).Assembly.GetCustomAttributes(false)
-            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().Single().InformationalVersion;
-        panel.Children.Add(new TextBlock { Text = "CataMedia " + version, TextWrapping = TextWrapping.Wrap });
+        var version = ApplicationVersion;
+        panel.Children.Add(new System.Windows.Controls.Image { Source = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/CataMedia;component/Assets/CataMedia.png")), Width = 64, Height = 64, HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 12) });
+        panel.Children.Add(new TextBlock { Text = "CataMedia " + version, FontSize = 20, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
         panel.Children.Add(new TextBlock { Text = T("Credits"), Margin = new Thickness(0, 8, 0, 12) });
-        AddLink("Manual", "https://github.com/Wisleyv/media_download/blob/feature/windows-dotnet-stage5/docs/WINDOWS_GUIDE.md");
+        AddLink("Manual", "https://github.com/Wisleyv/media_download/blob/d623ae54043c1f4c99359adf611baa28b56dc4df/docs/WINDOWS_GUIDE.md");
         var guide = Path.Combine(AppContext.BaseDirectory, "GUIDE.txt");
         if (File.Exists(guide)) AddLink("LocalGuide", guide);
         AddLink("AppReleases", "https://github.com/Wisleyv/media_download/releases");
+        using var helpLifetime = CancellationTokenSource.CreateLinkedTokenSource(componentLifetime.Token);
+        var updateStatus = new TextBlock { Text = string.Format(T(appCheckKey), appCheckArguments), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 8) };
+        var checkUpdate = new Button { Content = T("CheckAppUpdate"), HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(8) };
+        checkUpdate.Click += async (_, _) =>
+        {
+            checkUpdate.IsEnabled = false; updateStatus.Text = T("CheckingAppUpdate");
+            await CheckAppUpdatesAsync(true, helpLifetime.Token);
+            if (!helpLifetime.IsCancellationRequested)
+            { updateStatus.Text = string.Format(T(appCheckKey), appCheckArguments); checkUpdate.IsEnabled = true; }
+        };
+        dialog.Closed += (_, _) => helpLifetime.Cancel();
+        panel.Children.Add(checkUpdate); panel.Children.Add(updateStatus);
         panel.Children.Add(new TextBlock { Text = T("ReleaseHint"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 12, 0, 0) });
         dialog.Content = new ScrollViewer { Content = panel };
         dialog.ShowDialog();
@@ -62,17 +82,21 @@ public partial class MainWindow : Window
         }
     }
     private static readonly string?[] Browsers = [null, "chrome", "edge", "firefox", "brave"];
+    private void Exit_Click(object sender, RoutedEventArgs e) => Close();
 
     public MainWindow(ApplicationPaths paths, IMediaDownloadService? downloadService = null,
         IMediaLinkResolver? linkResolver = null, Func<MediaLinkResolution, PlaylistSelection>? choosePlaylist = null,
-        DependencyManager? dependencyManager = null)
+        DependencyManager? dependencyManager = null, AppReleaseChecker? appReleaseChecker = null)
     {
+        if (Application.Current is null)
+            Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("pack://application:,,,/CataMedia;component/Styles.xaml") });
         InitializeComponent();
         this.paths = paths;
         store = new(paths.PreferencesFile);
         var runner = new ExternalProcessRunner();
         dependencyClient = DependencyManager.CreateClient();
         dependencies = dependencyManager ?? new(paths.DependenciesDirectory, dependencyClient, runner);
+        appUpdates = appReleaseChecker ?? new(dependencyClient, ApplicationVersion);
         downloadQueue = new(downloadService ?? new YtDlpMediaDownloadService(runner));
         this.linkResolver = linkResolver ?? new YtDlpMediaLinkResolver(runner);
         this.choosePlaylist = choosePlaylist ?? (resolution =>
@@ -102,6 +126,37 @@ public partial class MainWindow : Window
         ApplyLanguage();
         UpdateOptions();
         Closed += (_, _) => { componentLifetime.Cancel(); dependencyClient.Dispose(); };
+    }
+
+    // Startup is explicitly invoked by App; constructing a window never accesses the network.
+    public async Task CheckAppUpdatesAsync(bool force = false, CancellationToken cancellationToken = default)
+    {
+        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(componentLifetime.Token, cancellationToken);
+        try
+        {
+            var result = await appUpdates.CheckAsync(force, lifetime.Token);
+            if (lifetime.IsCancellationRequested) return;
+            appCheckKey = result.Latest is null ? "AppNoCompatibleRelease" : result.UpdateAvailable ? "AppUpdateAvailable" : "AppNoNewerRelease";
+            appCheckArguments = result.Latest is null ? [] : [result.Latest.Version];
+            latestAppRelease = result.UpdateAvailable ? result.Latest : null;
+            AppUpdateNotice.Text = string.Format(T(appCheckKey), appCheckArguments);
+            AppUpdateBanner.Visibility = result.UpdateAvailable ? Visibility.Visible : Visibility.Collapsed;
+        }
+        catch (Exception error) when (DependencyDialog.Recoverable(error))
+        {
+            if (lifetime.IsCancellationRequested) return;
+            appCheckKey = "AppCheckUnavailable"; appCheckArguments = [];
+            // A failed check must not disable downloads or hide a previously identified update.
+        }
+    }
+
+    private void AppUpdateLater_Click(object sender, RoutedEventArgs e) => AppUpdateBanner.Visibility = Visibility.Collapsed;
+    private void OpenAppRelease_Click(object sender, RoutedEventArgs e)
+    {
+        if (latestAppRelease is null) return;
+        try { Process.Start(new ProcessStartInfo(latestAppRelease.Url) { UseShellExecute = true }); }
+        catch (Exception error) when (error is IOException or System.ComponentModel.Win32Exception or InvalidOperationException)
+        { MessageBox.Show(this, T("OpenFailed"), T("Help"), MessageBoxButton.OK, MessageBoxImage.Error); }
     }
 
     private void RefreshManagedComponents()
@@ -134,14 +189,20 @@ public partial class MainWindow : Window
         checkingComponents = true;
         try
         {
-            var missing = Enum.GetValues<DependencyKind>().Any(kind => CurrentComponent(kind) is not { } path || !File.Exists(path));
-            if (CurrentComponent(DependencyKind.Ffmpeg) is { } ffmpeg && !File.Exists(Path.Combine(Path.GetDirectoryName(ffmpeg)!, "ffprobe.exe"))) missing = true;
+            var missingKinds = Enum.GetValues<DependencyKind>()
+                .Where(kind => CurrentComponent(kind) is not { } path || !File.Exists(path)).ToList();
+            if (CurrentComponent(DependencyKind.Ffmpeg) is { } ffmpeg && !File.Exists(Path.Combine(Path.GetDirectoryName(ffmpeg)!, "ffprobe.exe"))
+                && !missingKinds.Contains(DependencyKind.Ffmpeg)) missingKinds.Add(DependencyKind.Ffmpeg);
             if (CurrentComponent(DependencyKind.Node) is { } node)
             {
                 try { await dependencies.ReadVersionAsync(DependencyKind.Node, node, componentLifetime.Token); }
-                catch (Exception error) when (DependencyDialog.Recoverable(error)) { missing = true; }
+                catch (Exception error) when (DependencyDialog.Recoverable(error))
+                { if (!missingKinds.Contains(DependencyKind.Node)) missingKinds.Add(DependencyKind.Node); }
             }
-            if (missing) ShowComponentNotice("MissingComponents");
+            var missing = missingKinds.Count > 0;
+            if (missing) ShowComponentNotice("MissingComponents", string.Join(", ", missingKinds.Select(kind => kind switch
+                { DependencyKind.YtDlp => "yt-dlp", DependencyKind.Ffmpeg => "FFmpeg + FFprobe", _ => "Node.js" })));
+            else if (componentNoticeKey == "MissingComponents") ComponentBanner.Visibility = Visibility.Collapsed;
             var executable = CurrentComponent(DependencyKind.YtDlp);
             string? installed = null;
             if (executable is not null)
@@ -150,10 +211,12 @@ public partial class MainWindow : Window
                 catch (Exception error) when (DependencyDialog.Recoverable(error)) { }
             }
             var release = await dependencies.CheckAsync(DependencyKind.YtDlp, false, componentLifetime.Token);
-            if (installed is null || DependencyManager.IsNewer(DependencyKind.YtDlp, release.Version, installed))
+            // First-run setup must remain visible even when the release check succeeds.
+            if (!missing && (installed is null || DependencyManager.IsNewer(DependencyKind.YtDlp, release.Version, installed)))
             {
                 ShowComponentNotice("UpdateNotice", installed ?? "—", release.Version);
             }
+            else if (!missing && componentNoticeKey == "UpdateNotice") ComponentBanner.Visibility = Visibility.Collapsed;
         }
         catch (Exception error) when (DependencyDialog.Recoverable(error)) { /* Existing components remain usable offline. */ }
         finally { checkingComponents = false; }
@@ -166,12 +229,13 @@ public partial class MainWindow : Window
         ComponentBanner.Visibility = Visibility.Visible;
     }
 
-    private void Components_Click(object sender, RoutedEventArgs e)
+    private async void Components_Click(object sender, RoutedEventArgs e)
     {
         if (activeDownload is not null) return;
         var dialog = new DependencyDialog(dependencies, UiLanguage, CurrentComponent, ActivateComponent) { Owner = this };
+        dialog.Icon = Icon;
         dialog.ShowDialog();
-        ComponentBanner.Visibility = Visibility.Collapsed;
+        await CheckStartupComponentsAsync();
     }
     private void Later_Click(object sender, RoutedEventArgs e) => ComponentBanner.Visibility = Visibility.Collapsed;
 
@@ -218,6 +282,7 @@ public partial class MainWindow : Window
         foreach (var row in queue) row.Refresh(UiLanguage);
         StatusLabel.Text = string.Format(T(statusKey), statusArguments);
         ComponentNotice.Text = string.Format(T(componentNoticeKey), componentNoticeArguments);
+        if (latestAppRelease is not null) AppUpdateNotice.Text = string.Format(T("AppUpdateAvailable"), latestAppRelease.Version);
     }
 
     private void UpdateOptions()
@@ -265,8 +330,8 @@ public partial class MainWindow : Window
             IReadOnlyList<QueueEntry> rows;
             if (retry is null)
             {
-                var requests = VideoUrl.Text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
-                    .Select(line => Request(line.Trim())).ToArray();
+                var requests = VideoUrl.Text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(Request).ToArray();
                 if (requests.Length == 0) { SetStatus("NoLinks"); return; }
                 foreach (var request in requests) request.Validate();
                 List<QueueEntry> prepared = [];
@@ -376,6 +441,7 @@ public partial class MainWindow : Window
     private void SetBusy(bool busy)
     {
         DownloadInputs.IsEnabled = !busy;
+        LanguageChoice.IsEnabled = !busy;
         DownloadButton.IsEnabled = !busy;
         CancelButton.IsEnabled = busy;
         ComponentsButton.IsEnabled = ComponentUpdateButton.IsEnabled = !busy;

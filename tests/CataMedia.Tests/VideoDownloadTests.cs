@@ -89,9 +89,19 @@ public sealed class VideoDownloadTests : IDisposable
     [InlineData(true)]
     public async Task MissingOrOutOfDestinationFileIsRejected(bool outside)
     {
-        var file = outside ? Path.Combine(Path.GetTempPath(), "outside.mp4") : Path.Combine(root, "missing.mp4");
-        var runner = new FakeRunner((_, output, _) => { output("CATAMEDIA_RESULT:" + JsonSerializer.Serialize(file)); return 0; });
-        await Assert.ThrowsAsync<InvalidDataException>(() => new YtDlpMediaDownloadService(runner).DownloadAsync(new("https://example.com/video", root, 720), tools, null, default));
+        var file = outside ? root + "-outside.mp4" : Path.Combine(root, "missing.mp4");
+        if (outside) File.WriteAllText(file, "fixture");
+        var runner = new FakeRunner((command, output, _) =>
+        {
+            output(Path.GetFileName(command.Executable) == "ffprobe.exe"
+                ? ValidMetadata : "CATAMEDIA_RESULT:" + JsonSerializer.Serialize(file));
+            return 0;
+        });
+        try
+        {
+            await Assert.ThrowsAsync<InvalidDataException>(() => new YtDlpMediaDownloadService(runner).DownloadAsync(new("https://example.com/video", root, 720), tools, null, default));
+        }
+        finally { if (outside) File.Delete(file); }
     }
 
     [Theory]

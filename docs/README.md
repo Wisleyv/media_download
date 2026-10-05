@@ -1,61 +1,88 @@
 # CataMedia
 
-> **Windows C#/.NET:** [guia da prévia / preview guide](WINDOWS_GUIDE.md) e [Etapa 5 — ZIP e instalador](WINDOWS_STAGE5.md). Distribuição ainda não publicada como release.
+<img src="../src/CataMedia.Desktop/Assets/CataMedia.png" width="96" alt="Ícone do CataMedia / CataMedia icon">
 
-> **Prévia C#/.NET para Windows / Windows C#/.NET preview:** consulte [Etapa 4 — componentes externos](WINDOWS_STAGE4.md) para obtenção, atualização e recuperação de yt-dlp, FFmpeg/FFprobe e Node.js. As instruções abaixo continuam referentes à versão PowerShell estável. / See [Stage 4 — external components](WINDOWS_STAGE4.md) for acquisition, updates and recovery. The instructions below still refer to the stable PowerShell version.
+**Vídeos e áudios, no formato que você escolher. / Your videos and audio, in the format you choose.**
 
-> **PT-BR:** Interface gráfica simples para Windows que baixa vídeos e músicas do YouTube usando yt-dlp.
-> **EN:** Simple Windows GUI for downloading videos and music from YouTube using yt-dlp.
+[Guia PT-BR / English guide](WINDOWS_GUIDE.md) · [Início rápido / Quick start](TUTORIAL.md) · [Releases oficiais / Official releases](https://github.com/Wisleyv/media_download/releases) · [Suporte / Support](https://github.com/Wisleyv/media_download/issues)
 
----
+## Português
 
-## Recursos / Features
+O CataMedia C# 3.x é um aplicativo para Windows x64, com interface em português e inglês,
+que usa yt-dlp para obter mídia autorizada. Esta linha está em preparação de distribuição;
+os pacotes C# são diferentes da versão PowerShell 2.x disponível nas releases anteriores.
 
-- Cole múltiplas URLs (uma por linha) / Paste multiple URLs (one per line)
-- Escolha a pasta de saída / Choose output folder
-- Download de vídeo: 720p ou 1080p (MP4) / Video downloads: 720p or 1080p (MP4)
-- Extração de áudio: mp3, wav ou flac (Baixa/Padrão/HQ) / Audio extraction: mp3, wav or flac (Low/Standard/HQ)
-- Interface responsiva com cancelamento / Responsive UI with cancel
-- Download/atualização automática do yt-dlp / Auto download/update of yt-dlp
-- Troca de idioma na interface (PT-BR / EN) / Language switch in the UI (PT-BR / EN)
-- Executável sem janela de console visível (via `.vbs`) / Run without visible console window (via `.vbs`)
+- Vídeo MP4 com resolução máxima de 720p ou 1080p.
+- Áudio MP3 com qualidade Baixa/Padrão/Alta; WAV e FLAC sem seletor de qualidade artificial.
+- Fila sequencial, confirmação de playlists, cancelamento e repetição dos itens que falharam.
+- Resultado e detalhes por item, com acesso à pasta do arquivo concluído.
+- Obtenção e atualização assistidas de yt-dlp, FFmpeg/FFprobe e Node.js; progresso e validação antes da ativação.
+- Consulta de novas versões estáveis C# 3.x, sem instalação automática e sem bloquear uso offline.
+- Menus Arquivo, Exibir e Ajuda, opções avançadas e salvamento explícito de preferências.
 
-## Requisitos / Requirements
+![Tela principal em português](images/main-pt.png)
 
-- Windows 10/11
-- Windows PowerShell 5.1 (pré-instalado / pre-installed)
-- yt-dlp (pode ser baixado pela interface / can be downloaded from the UI)
-- FFmpeg + FFprobe (recomendado para vídeo; obrigatório para áudio; a interface oferece download portátil / recommended for video; required for audio; the UI can download a portable copy)
+### Escolha sua distribuição
 
-## Execução / Run
+| Opção | Como abrir | Dados do aplicativo |
+|---|---|---|
+| Instalador por usuário | Execute `CataMedia-Setup-<versão>-win-x64.exe`; abra pelo menu Iniciar | `%LOCALAPPDATA%\CataMedia\data` |
+| ZIP portátil | Extraia **todo** `CataMedia-<versão>-win-x64-portable.zip`; abra `CataMedia.exe` | `data` ao lado do executável |
 
-**Sem janela de console / Without console window (recommended):**
-- Dê duplo clique em `catamedia.vbs` / Double-click `catamedia.vbs`
+Ambos incluem o .NET e dispensam SDK ou ferramentas de desenvolvimento. Windows 11 x64
+é o alvo principal; confira os requisitos e limites no [guia](WINDOWS_GUIDE.md).
+Os pacotes **não incluem** yt-dlp, FFmpeg/FFprobe e Node.js. Na primeira execução,
+abra **Componentes** e obtenha os três itens, um por vez, na mesma janela.
+É possível selecionar ferramentas existentes em **Mais opções e componentes**.
 
-**Com janela de console / With console window (fallback):**
-- Dê duplo clique em `catamedia.bat` / Double-click `catamedia.bat`
+O programa e o instalador não possuem assinatura digital. Confira origem e checksums.
+Não há logs automáticos na pasta dos downloads. Preferências são salvas somente ao escolher
+**Salvar preferências**. Use apenas conteúdo que tenha autorização para obter.
 
-**Via linha de comando / Command line:**
-```powershell
-powershell.exe -STA -File .\catamedia.ps1
-```
+## English
 
-## Tutorial (PT-BR / EN)
+CataMedia C# 3.x is a Windows x64 application with Portuguese and English interfaces,
+using yt-dlp to obtain authorized media. This line is being prepared for distribution;
+its packages are separate from the PowerShell 2.x releases.
 
-Veja / See [TUTORIAL.md](TUTORIAL.md)
+- MP4 video with a maximum resolution of 720p or 1080p.
+- MP3 audio with Low/Standard/High quality; WAV and FLAC without an ineffective quality selector.
+- Sequential queue, playlist confirmation, cancellation and retrying failed items.
+- Per-item results and details, with access to the completed file's folder.
+- Assisted acquisition and updates of yt-dlp, FFmpeg/FFprobe and Node.js, with progress and validation before activation.
+- Stable C# 3.x version checks without automatic installation or blocking offline use.
+- File, View and Help menus, advanced options and explicit preference saving.
 
-## Notas / Notes
+![Main window in English](images/main-en.png)
 
-- O yt-dlp.exe não é incluído no código-fonte nem no pacote do CataMedia. Use "Baixar/Atualizar" para obter a versão estável mais recente diretamente do GitHub oficial e escolha a pasta de instalação. / yt-dlp.exe is not included in the source tree or CataMedia package. Use "Download/Update" to obtain the latest stable version directly from the official GitHub repository and choose the installation folder.
-- As configurações ficam em / Settings are stored in `%APPDATA%\catamedia\settings.json`
-- Logs são criados na pasta de saída ao rodar downloads / Logs are created in the output folder when downloads run
-- O idioma escolhido é salvo automaticamente / The chosen language is saved automatically
+Use the per-user installer and launch from Start, or extract the **entire** portable ZIP
+and launch `CataMedia.exe`. Both bundle .NET; no SDK or development tools are required.
+Windows 11 x64 is the primary target; see the [guide](WINDOWS_GUIDE.md) for requirements and limits.
+External components are **not bundled**. Open **Components** and obtain each item in the
+same window, or select existing tools in **More options and components**.
 
-## Autor / Author
+The application and installer are unsigned. Verify their official source and checksums.
+Download logs are not created automatically. Choose **Save preferences** to persist settings.
+Only obtain content you are authorized to download.
 
-Desenvolvido por / Developed by Wisley Vilela
-https://github.com/Wisleyv
+## Documentação / Documentation
 
-## Licença / License
+- [Guia completo PT-BR/EN / Full guide](WINDOWS_GUIDE.md)
+- [Início rápido PT-BR/EN / Quick start](TUTORIAL.md)
+- [Início rápido em português](TUTORIAL_PT_BR.md)
+- [Preparação e publicação de releases / Release procedure](RELEASING.md)
+- [Licenças e componentes / Licenses and dependencies](WINDOWS_THIRD_PARTY.md)
+- [Validação e limitações da etapa 6 / Stage 6 evidence and limits](WINDOWS_STAGE6.md)
 
-MIT
+As imagens mostram a compilação de desenvolvimento com caminhos e dados de exemplo.
+Os PDFs/RTF antigos nesta pasta pertencem à documentação PowerShell; não são o manual C#.
+Os fontes e manuais da versão anterior permanecem no [histórico v2.0.1](https://github.com/Wisleyv/media_download/tree/v2.0.1)
+e na [release v2.0.1](https://github.com/Wisleyv/media_download/releases/tag/v2.0.1).
+
+Images show a development build with example paths and data. Older PDF/RTF files in this
+folder document PowerShell, not the C# application. Previous source, manuals and releases
+remain available through the v2.0.1 links above.
+
+## Autor e licença / Author and license
+
+Wisley Vilela (WisleyVilela) · [GitHub](https://github.com/Wisleyv) · [MIT](../LICENSE).

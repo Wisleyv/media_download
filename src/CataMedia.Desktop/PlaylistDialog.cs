@@ -11,6 +11,7 @@ public sealed class PlaylistDialog : Window
     public PlaylistDialog(MediaLinkResolution resolution, string language)
     {
         Title = UiStrings.Get("PlaylistTitle", language);
+        SetResourceReference(StyleProperty, "WindowStyle");
         Width = 520;
         SizeToContent = SizeToContent.Height;
         ResizeMode = ResizeMode.NoResize;

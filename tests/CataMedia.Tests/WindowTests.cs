@@ -12,6 +12,290 @@ namespace CataMedia.Tests;
 public sealed class WindowTests
 {
     [Fact]
+    public void ApplicationUpdateCheckDoesNotBlockUseAndKeepsKnownUpdateOnOfflineFailure()
+    {
+        OnStaThread(() =>
+        {
+            SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+            var root = Path.Combine(Path.GetTempPath(), "CataMedia-app-update-" + Guid.NewGuid().ToString("N"));
+            using var handler = new PendingAppReleaseHandler();
+            using var client = new System.Net.Http.HttpClient(handler);
+            var window = new MainWindow(new(DistributionMode.Portable, root, Path.Combine(root, "temp")),
+                appReleaseChecker: new(client, "3.0.0-stage5"));
+            try
+            {
+                Assert.Equal(0, handler.Calls);
+                var task = window.CheckAppUpdatesAsync();
+                Assert.False(task.IsCompleted);
+                Assert.True(((Button)window.FindName("DownloadButton")).IsEnabled);
+                handler.Completion.SetResult(AppReleaseTests.Response(AppReleaseTests.Release("v2.0.1"), AppReleaseTests.Release("v3.1.0")));
+                PumpUntil(() => task.IsCompleted); task.GetAwaiter().GetResult();
+                Assert.Equal(Visibility.Visible, ((StackPanel)window.FindName("AppUpdateBanner")).Visibility);
+                Assert.Equal(Visibility.Collapsed, ((StackPanel)window.FindName("ComponentBanner")).Visibility);
+                Assert.Contains("3.1.0", ((TextBlock)window.FindName("AppUpdateNotice")).Text);
+                ((ComboBox)window.FindName("LanguageChoice")).SelectedIndex = 1;
+                Assert.Contains("new CataMedia version", ((TextBlock)window.FindName("AppUpdateNotice")).Text);
+                handler.Offline = true;
+                var offline = window.CheckAppUpdatesAsync(true);
+                PumpUntil(() => offline.IsCompleted); offline.GetAwaiter().GetResult();
+                Assert.Equal(Visibility.Visible, ((StackPanel)window.FindName("AppUpdateBanner")).Visibility);
+                Assert.True(((Button)window.FindName("DownloadButton")).IsEnabled);
+                Assert.False(Directory.Exists(root)); // Checks never save preferences, dependencies or logs.
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    private sealed class PendingAppReleaseHandler : System.Net.Http.HttpMessageHandler
+    {
+        public int Calls;
+        public bool Offline;
+        public TaskCompletionSource<System.Net.Http.HttpResponseMessage> Completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        protected override Task<System.Net.Http.HttpResponseMessage> SendAsync(System.Net.Http.HttpRequestMessage request, CancellationToken token)
+        {
+            Calls++;
+            if (Offline) throw new System.Net.Http.HttpRequestException("Offline fixture");
+            return Completion.Task.WaitAsync(token);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FfmpegCheckHandlesDevelopmentBuildAndInvalidReleaseWithoutUnhandledException(bool invalidRelease)
+    {
+        OnStaThread(() =>
+        {
+            SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+            var root = Path.Combine(Path.GetTempPath(), "CataMedia-ffmpeg-check-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            var executable = Path.Combine(root, "ffmpeg.exe");
+            File.WriteAllText(executable, "preserved fixture");
+            using var handler = new FfmpegReleaseHandler(invalidRelease);
+            using var client = new System.Net.Http.HttpClient(handler);
+            var dialog = new DependencyDialog(new(root, client, new DevelopmentFfmpegRunner()), "pt",
+                kind => kind == DependencyKind.Ffmpeg ? executable : null,
+                (_, _) => throw new InvalidOperationException("Checking must not activate a component."));
+            var unhandled = new List<Exception>();
+            System.Windows.Threading.DispatcherUnhandledExceptionEventHandler catchUnhandled = (_, e) =>
+            { unhandled.Add(e.Exception); e.Handled = true; };
+            dialog.Dispatcher.UnhandledException += catchUnhandled;
+            try
+            {
+                dialog.Show();
+                var panel = (StackPanel)((ScrollViewer)dialog.Content).Content;
+                var choice = panel.Children.OfType<ComboBox>().Single();
+                var buttons = panel.Children.OfType<Button>().ToArray();
+                PumpUntil(() => handler.Calls >= 1 && buttons[0].IsEnabled);
+                choice.SelectedIndex = 1;
+                PumpUntil(() => handler.Calls >= 2 && buttons[0].IsEnabled);
+                // Drain queued async-void exceptions so the regression is reported, not allowed to kill the test host.
+                var drained = System.Diagnostics.Stopwatch.StartNew();
+                PumpUntil(() => drained.ElapsedMilliseconds >= 100);
+                Assert.Empty(unhandled);
+                Assert.True(dialog.IsVisible);
+                Assert.True(choice.IsEnabled);
+                Assert.Equal(!invalidRelease, buttons[1].IsEnabled);
+                var details = panel.Children.OfType<TextBlock>().ElementAt(1).Text;
+                Assert.Contains(invalidRelease ? "Não foi possível concluir" : "versões de desenvolvimento", details);
+                Assert.Equal("preserved fixture", File.ReadAllText(executable));
+                Assert.False(File.Exists(Path.Combine(root, "Ffmpeg", "active.json")));
+            }
+            finally
+            {
+                dialog.Close(); dialog.Dispatcher.UnhandledException -= catchUnhandled;
+                Directory.Delete(root, true);
+            }
+        });
+    }
+
+    private sealed class DevelopmentFfmpegRunner : IProcessRunner
+    {
+        public Task<int> RunAsync(ProcessCommand command, Action<string> output, Action<string> error, CancellationToken token)
+        { output("ffmpeg version N-116720-g5c1c0325cd-20240818 Copyright (c) 2000-2024 the FFmpeg developers"); return Task.FromResult(0); }
+    }
+
+    private sealed class FfmpegReleaseHandler(bool invalidRelease) : System.Net.Http.HttpMessageHandler
+    {
+        public int Calls;
+        protected override Task<System.Net.Http.HttpResponseMessage> SendAsync(System.Net.Http.HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Calls++;
+            if (request.RequestUri!.Host != "www.gyan.dev") throw new System.Net.Http.HttpRequestException("Offline fixture for other components");
+            var body = request.RequestUri.AbsolutePath.EndsWith("release-version", StringComparison.Ordinal)
+                ? (invalidRelease ? "not a release" : "9.0.2") : new string('a', 64);
+            return Task.FromResult(new System.Net.Http.HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                { Content = new System.Net.Http.StringContent(body) });
+        }
+    }
+
+    [Fact]
+    public void MenusFollowLanguageAndReuseExplicitPreferencesAndAdvancedOptions()
+    {
+        OnStaThread(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "CataMedia-menu-" + Guid.NewGuid().ToString("N"));
+            var window = new MainWindow(new(DistributionMode.Portable, root, Path.Combine(root, "temp")));
+            try
+            {
+                window.Show();
+                var menu = (Menu)window.FindName("MainMenuBar");
+                Assert.Equal("_Arquivo", ((MenuItem)menu.Items[0]).Header);
+                ((ComboBox)window.FindName("LanguageChoice")).SelectedIndex = 1;
+                Assert.Equal("_File", ((MenuItem)menu.Items[0]).Header);
+                var media = (ComboBox)window.FindName("MediaChoice");
+                var peer = System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(media);
+                var expand = (System.Windows.Automation.Provider.IExpandCollapseProvider)peer.GetPattern(System.Windows.Automation.Peers.PatternInterface.ExpandCollapse);
+                expand.Expand(); window.UpdateLayout();
+                Assert.True(media.IsDropDownOpen);
+                expand.Collapse(); Assert.False(media.IsDropDownOpen);
+                Assert.NotNull(peer.GetPattern(System.Windows.Automation.Peers.PatternInterface.Selection));
+                ((ComboBoxItem)media.Items[1]).IsSelected = true;
+                Assert.Equal(1, media.SelectedIndex);
+                ((MenuItem)window.FindName("AdvancedMenuItem")).IsChecked = true;
+                Assert.True(((Expander)window.FindName("AdvancedOptions")).IsExpanded);
+                Assert.False(File.Exists(Path.Combine(root, "preferences.json")));
+                ((TextBox)window.FindName("Destination")).Text = root;
+                ((MenuItem)window.FindName("SaveMenuItem")).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                Assert.Equal(root, new JsonPreferencesStore(Path.Combine(root, "preferences.json")).Load().Value.DestinationFolder);
+                Assert.NotNull(window.Icon);
+            }
+            finally { window.Close(); if (Directory.Exists(root)) Directory.Delete(root, true); }
+        });
+    }
+
+    [Fact]
+    public void ComponentSelectionChecksEachItemWithoutClosingDialogAndAllowsOfflineRetry()
+    {
+        OnStaThread(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "CataMedia-dialog-" + Guid.NewGuid().ToString("N"));
+            using var handler = new OfflineHandler();
+            using var client = new System.Net.Http.HttpClient(handler);
+            var dialog = new DependencyDialog(new(root, client, new VersionRunner()), "pt-BR", _ => null,
+                (_, _) => throw new InvalidOperationException("An offline check must not activate a component."));
+            try
+            {
+                SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+                dialog.Show();
+                var panel = (StackPanel)((ScrollViewer)dialog.Content).Content;
+                var choice = panel.Children.OfType<ComboBox>().Single();
+                var check = panel.Children.OfType<Button>().First();
+                for (var index = 0; index < 3; index++)
+                {
+                    choice.SelectedIndex = index;
+                    PumpUntil(() => handler.Calls == index + 1 && check.IsEnabled);
+                    Assert.True(dialog.IsVisible);
+                    Assert.True(choice.IsEnabled);
+                    Assert.Contains("Não foi possível", panel.Children.OfType<TextBlock>().ElementAt(1).Text);
+                }
+                check.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                PumpUntil(() => handler.Calls == 4 && check.IsEnabled);
+                Assert.True(dialog.IsVisible);
+                Assert.False(File.Exists(Path.Combine(root, "preferences.json")));
+            }
+            finally { dialog.Close(); if (Directory.Exists(root)) Directory.Delete(root, true); }
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void MissingComponentsNoticeSurvivesSuccessfulReleaseCheck(bool incompleteFfmpegPair)
+    {
+        OnStaThread(() =>
+        {
+            var root = Path.Combine(Path.GetTempPath(), "CataMedia-first-run-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            using var handler = new ReleaseHandler();
+            using var client = new System.Net.Http.HttpClient(handler);
+            var manager = new DependencyManager(root, client, new VersionRunner());
+            var window = new MainWindow(new(DistributionMode.Portable, root, Path.Combine(root, "temp")), dependencyManager: manager);
+            try
+            {
+                foreach (var name in new[] { "yt-dlp.exe", "ffmpeg.exe" })
+                    File.WriteAllText(Path.Combine(root, name), "fixture");
+                ((TextBox)window.FindName("YtDlpPath")).Text = Path.Combine(root, "yt-dlp.exe");
+                ((TextBox)window.FindName("FfmpegFolder")).Text = root;
+                ((TextBox)window.FindName("NodePath")).Text = "";
+                if (incompleteFfmpegPair)
+                {
+                    File.WriteAllText(Path.Combine(root, "node.exe"), "fixture");
+                    ((TextBox)window.FindName("NodePath")).Text = Path.Combine(root, "node.exe");
+                }
+                var check = window.CheckStartupComponentsAsync();
+                PumpUntil(() => check.IsCompleted);
+                check.GetAwaiter().GetResult();
+                Assert.Equal(2, handler.Calls);
+                Assert.Equal(Visibility.Visible, ((StackPanel)window.FindName("ComponentBanner")).Visibility);
+                Assert.Contains("Faltam componentes", ((TextBlock)window.FindName("ComponentNotice")).Text);
+                ((ComboBox)window.FindName("LanguageChoice")).SelectedIndex = 1;
+                Assert.Contains("FFmpeg + FFprobe", ((TextBlock)window.FindName("ComponentNotice")).Text);
+                Assert.Contains("same window", ((TextBlock)window.FindName("ComponentNotice")).Text);
+                if (incompleteFfmpegPair) Assert.DoesNotContain("Node.js", ((TextBlock)window.FindName("ComponentNotice")).Text);
+                Assert.True(((Button)window.FindName("DownloadButton")).IsEnabled);
+                Assert.False(File.Exists(Path.Combine(root, "preferences.json")));
+            }
+            finally { window.Close(); Directory.Delete(root, true); }
+        });
+    }
+
+    [Fact]
+    public void UpdatingYtDlpClearsThePreviousVersionNotice()
+    {
+        OnStaThread(() =>
+        {
+            SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
+            var root = Path.Combine(Path.GetTempPath(), "CataMedia-update-notice-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(root);
+            using var handler = new ReleaseHandler();
+            using var client = new System.Net.Http.HttpClient(handler);
+            var runner = new VersionRunner();
+            var window = new MainWindow(new(DistributionMode.Portable, root, Path.Combine(root, "temp")),
+                dependencyManager: new DependencyManager(root, client, runner));
+            try
+            {
+                foreach (var name in new[] { "yt-dlp.exe", "ffmpeg.exe", "ffprobe.exe", "node.exe" })
+                    File.WriteAllText(Path.Combine(root, name), "fixture");
+                ((TextBox)window.FindName("YtDlpPath")).Text = Path.Combine(root, "yt-dlp.exe");
+                ((TextBox)window.FindName("FfmpegFolder")).Text = root;
+                ((TextBox)window.FindName("NodePath")).Text = Path.Combine(root, "node.exe");
+                var check = window.CheckStartupComponentsAsync();
+                PumpUntil(() => check.IsCompleted);
+                check.GetAwaiter().GetResult();
+                var banner = (StackPanel)window.FindName("ComponentBanner");
+                Assert.Equal(Visibility.Visible, banner.Visibility);
+                Assert.Contains("2026.08.19", ((TextBlock)window.FindName("ComponentNotice")).Text);
+                runner.YtDlpVersion = "2026.09.01";
+                check = window.CheckStartupComponentsAsync();
+                PumpUntil(() => check.IsCompleted);
+                check.GetAwaiter().GetResult();
+                Assert.Equal(Visibility.Collapsed, banner.Visibility);
+                Assert.True(((Button)window.FindName("DownloadButton")).IsEnabled);
+            }
+            finally { window.Close(); Directory.Delete(root, true); }
+        });
+    }
+
+    private sealed class ReleaseHandler : System.Net.Http.HttpMessageHandler
+    {
+        public int Calls;
+        protected override Task<System.Net.Http.HttpResponseMessage> SendAsync(System.Net.Http.HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Calls++;
+            var body = request.RequestUri!.Host == "api.github.com"
+                ? """
+                  {"tag_name":"2026.09.01","prerelease":false,"draft":false,"assets":[
+                  {"name":"yt-dlp.exe","browser_download_url":"https://github.com/yt-dlp/yt-dlp/releases/download/2026.09.01/yt-dlp.exe"},
+                  {"name":"SHA2-256SUMS","browser_download_url":"https://github.com/yt-dlp/yt-dlp/releases/download/2026.09.01/SHA2-256SUMS"}]}
+                  """
+                : new string('a', 64) + "  yt-dlp.exe\n";
+            return Task.FromResult(new System.Net.Http.HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                { Content = new System.Net.Http.StringContent(body) });
+        }
+    }
+
+    [Fact]
     public void OfflineStartupCheckKeepsDownloadAvailableAndWindowConstructionDoesNotUseNetwork()
     {
         OnStaThread(() =>
@@ -34,6 +318,23 @@ public sealed class WindowTests
                 Assert.Equal(Visibility.Visible, ((StackPanel)window.FindName("ComponentBanner")).Visibility);
                 ((ComboBox)window.FindName("LanguageChoice")).SelectedIndex = 1;
                 Assert.Contains("missing", ((TextBlock)window.FindName("ComponentNotice")).Text);
+                window.Show();
+                for (var attempt = 0; attempt < 2; attempt++)
+                {
+                    var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(10) };
+                    timer.Tick += (_, _) =>
+                    {
+                        var dialog = window.OwnedWindows.OfType<DependencyDialog>().SingleOrDefault();
+                        if (dialog is null) return;
+                        timer.Stop(); dialog.Close();
+                    };
+                    timer.Start();
+                    try { ((Button)window.FindName("ComponentUpdateButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); }
+                    finally { timer.Stop(); }
+                    PumpUntil(() => ((StackPanel)window.FindName("ComponentBanner")).Visibility == Visibility.Visible);
+                    Assert.True(window.IsVisible);
+                    Assert.Contains("missing", ((TextBlock)window.FindName("ComponentNotice")).Text);
+                }
                 Assert.False(File.Exists(Path.Combine(root, "preferences.json")));
             }
             finally { window.Close(); if (Directory.Exists(root)) Directory.Delete(root, true); }
@@ -49,7 +350,8 @@ public sealed class WindowTests
     private sealed class VersionRunner : IProcessRunner
     {
         public Task<int> RunAsync(ProcessCommand command, Action<string> standardOutput, Action<string> standardError, CancellationToken cancellationToken)
-        { standardOutput("2026.08.19"); return Task.FromResult(0); }
+        { standardOutput(Path.GetFileName(command.Executable) == "node.exe" ? "v22.0.0" : YtDlpVersion); return Task.FromResult(0); }
+        public string YtDlpVersion { get; set; } = "2026.08.19";
     }
 
     [Theory]
@@ -137,6 +439,9 @@ public sealed class WindowTests
                 Assert.False(start.IsEnabled);
                 Assert.False(((Button)window.FindName("ComponentsButton")).IsEnabled);
                 Assert.False(((Button)window.FindName("ComponentUpdateButton")).IsEnabled);
+                Assert.False(((MenuItem)window.FindName("ComponentsMenuItem")).IsEnabled);
+                Assert.False(((MenuItem)window.FindName("SaveMenuItem")).IsEnabled);
+                Assert.False(((ComboBox)window.FindName("LanguageChoice")).IsEnabled);
                 Assert.Equal(1080, service.Request?.MaximumHeight);
                 if (close) window.Close();
                 else if (cancel) ((Button)window.FindName("CancelButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -243,7 +548,7 @@ public sealed class WindowTests
             try
             {
                 window.Show();
-                ((TextBox)window.FindName("VideoUrl")).Text = "https://example.com/first\nhttps://example.com/second";
+                ((TextBox)window.FindName("VideoUrl")).Text = " \t\nhttps://example.com/first\n \t\nhttps://example.com/second\n  ";
                 var download = (Button)window.FindName("DownloadButton");
                 download.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 PumpUntil(() => download.IsEnabled);
