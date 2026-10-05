@@ -15,6 +15,12 @@ public partial class MainWindow : Window
 {
     private readonly JsonPreferencesStore store;
     private readonly ApplicationPaths paths;
+    private readonly System.Net.Http.HttpClient dependencyClient;
+    private readonly DependencyManager dependencies;
+    private readonly CancellationTokenSource componentLifetime = new();
+    private bool checkingComponents;
+    private string componentNoticeKey = "MissingComponents";
+    private object[] componentNoticeArguments = [];
     private readonly DownloadQueue downloadQueue;
     private readonly IMediaLinkResolver linkResolver;
     private readonly Func<MediaLinkResolution, PlaylistSelection> choosePlaylist;
@@ -29,12 +35,15 @@ public partial class MainWindow : Window
     private static readonly string?[] Browsers = [null, "chrome", "edge", "firefox", "brave"];
 
     public MainWindow(ApplicationPaths paths, IMediaDownloadService? downloadService = null,
-        IMediaLinkResolver? linkResolver = null, Func<MediaLinkResolution, PlaylistSelection>? choosePlaylist = null)
+        IMediaLinkResolver? linkResolver = null, Func<MediaLinkResolution, PlaylistSelection>? choosePlaylist = null,
+        DependencyManager? dependencyManager = null)
     {
         InitializeComponent();
         this.paths = paths;
         store = new(paths.PreferencesFile);
         var runner = new ExternalProcessRunner();
+        dependencyClient = DependencyManager.CreateClient();
+        dependencies = dependencyManager ?? new(paths.DependenciesDirectory, dependencyClient, runner);
         downloadQueue = new(downloadService ?? new YtDlpMediaDownloadService(runner));
         this.linkResolver = linkResolver ?? new YtDlpMediaLinkResolver(runner);
         this.choosePlaylist = choosePlaylist ?? (resolution =>
@@ -56,13 +65,86 @@ public partial class MainWindow : Window
         YtDlpPath.Text = FindTool("yt-dlp.exe", paths.DependenciesDirectory) ?? "";
         FfmpegFolder.Text = Path.GetDirectoryName(FindTool("ffmpeg.exe", paths.DependenciesDirectory)) ?? "";
         NodePath.Text = FindTool("node.exe", paths.DependenciesDirectory) ?? "";
+        RefreshManagedComponents();
         QueueList.ItemsSource = queue;
         SaveButton.IsEnabled = loaded.CanSave;
         statusKey = loaded.CanSave ? "Ready" : "PreferencesUnreadable";
         initialized = true;
         ApplyLanguage();
         UpdateOptions();
+        Closed += (_, _) => { componentLifetime.Cancel(); dependencyClient.Dispose(); };
     }
+
+    private void RefreshManagedComponents()
+    {
+        foreach (var kind in Enum.GetValues<DependencyKind>())
+        {
+            try { if (dependencies.ActiveExecutable(kind) is { } path) ActivateComponent(kind, path); }
+            catch (Exception error) when (DependencyDialog.Recoverable(error)) { }
+        }
+    }
+
+    private string? CurrentComponent(DependencyKind kind) => kind switch
+    {
+        DependencyKind.YtDlp => string.IsNullOrWhiteSpace(YtDlpPath.Text) ? null : YtDlpPath.Text.Trim(),
+        DependencyKind.Ffmpeg => string.IsNullOrWhiteSpace(FfmpegFolder.Text) ? null : Path.Combine(FfmpegFolder.Text.Trim(), "ffmpeg.exe"),
+        _ => string.IsNullOrWhiteSpace(NodePath.Text) ? null : NodePath.Text.Trim()
+    };
+
+    private void ActivateComponent(DependencyKind kind, string path)
+    {
+        if (kind == DependencyKind.YtDlp) YtDlpPath.Text = path;
+        else if (kind == DependencyKind.Ffmpeg) FfmpegFolder.Text = Path.GetDirectoryName(path)!;
+        else NodePath.Text = path;
+    }
+
+    // App startup calls this; constructing a window in offline tests does not contact the network.
+    public async Task CheckStartupComponentsAsync()
+    {
+        if (checkingComponents) return;
+        checkingComponents = true;
+        try
+        {
+            var missing = Enum.GetValues<DependencyKind>().Any(kind => CurrentComponent(kind) is not { } path || !File.Exists(path));
+            if (CurrentComponent(DependencyKind.Ffmpeg) is { } ffmpeg && !File.Exists(Path.Combine(Path.GetDirectoryName(ffmpeg)!, "ffprobe.exe"))) missing = true;
+            if (CurrentComponent(DependencyKind.Node) is { } node)
+            {
+                try { await dependencies.ReadVersionAsync(DependencyKind.Node, node, componentLifetime.Token); }
+                catch (Exception error) when (DependencyDialog.Recoverable(error)) { missing = true; }
+            }
+            if (missing) ShowComponentNotice("MissingComponents");
+            var executable = CurrentComponent(DependencyKind.YtDlp);
+            string? installed = null;
+            if (executable is not null)
+            {
+                try { installed = await dependencies.ReadVersionAsync(DependencyKind.YtDlp, executable, componentLifetime.Token); }
+                catch (Exception error) when (DependencyDialog.Recoverable(error)) { }
+            }
+            var release = await dependencies.CheckAsync(DependencyKind.YtDlp, false, componentLifetime.Token);
+            if (installed is null || DependencyManager.IsNewer(DependencyKind.YtDlp, release.Version, installed))
+            {
+                ShowComponentNotice("UpdateNotice", installed ?? "—", release.Version);
+            }
+        }
+        catch (Exception error) when (DependencyDialog.Recoverable(error)) { /* Existing components remain usable offline. */ }
+        finally { checkingComponents = false; }
+    }
+
+    private void ShowComponentNotice(string key, params object[] arguments)
+    {
+        componentNoticeKey = key; componentNoticeArguments = arguments;
+        ComponentNotice.Text = string.Format(T(key), arguments);
+        ComponentBanner.Visibility = Visibility.Visible;
+    }
+
+    private void Components_Click(object sender, RoutedEventArgs e)
+    {
+        if (activeDownload is not null) return;
+        var dialog = new DependencyDialog(dependencies, UiLanguage, CurrentComponent, ActivateComponent) { Owner = this };
+        dialog.ShowDialog();
+        ComponentBanner.Visibility = Visibility.Collapsed;
+    }
+    private void Later_Click(object sender, RoutedEventArgs e) => ComponentBanner.Visibility = Visibility.Collapsed;
 
     private Preferences ReadPreferences() => new()
     {
@@ -106,6 +188,7 @@ public partial class MainWindow : Window
         DataLabel.Text = string.Format(T("DataFolder"), paths.DataDirectory);
         foreach (var row in queue) row.Refresh(UiLanguage);
         StatusLabel.Text = string.Format(T(statusKey), statusArguments);
+        ComponentNotice.Text = string.Format(T(componentNoticeKey), componentNoticeArguments);
     }
 
     private void UpdateOptions()
@@ -266,6 +349,7 @@ public partial class MainWindow : Window
         DownloadInputs.IsEnabled = !busy;
         DownloadButton.IsEnabled = !busy;
         CancelButton.IsEnabled = busy;
+        ComponentsButton.IsEnabled = ComponentUpdateButton.IsEnabled = !busy;
         UpdateActions();
     }
 
