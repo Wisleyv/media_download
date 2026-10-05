@@ -4,6 +4,12 @@ public static class UiStrings
 {
     public static IReadOnlyDictionary<string, (string Pt, string En)> Values { get; } = new Dictionary<string, (string, string)>
     {
+        ["Help"] = ("Ajuda / Sobre", "Help / About"),
+        ["Credits"] = ("Desenvolvimento: Wisley Vilela. Licença MIT.", "Developed by Wisley Vilela. MIT license."),
+        ["Manual"] = ("Manual no GitHub", "Manual on GitHub"),
+        ["LocalGuide"] = ("Guia local (sem internet)", "Local guide (offline)"),
+        ["AppReleases"] = ("Consultar novas releases do CataMedia", "Check CataMedia releases"),
+        ["ReleaseHint"] = ("Compare a versão acima com a release publicada. Esta consulta abre o GitHub; não instala atualizações. Componentes são atualizados pelo botão Componentes.", "Compare the version above with the published release. This opens GitHub; it does not install updates. Dependencies are updated through Components."),
         ["Hint"] = ("Cole os links, escolha o formato e baixe. Um link por linha.", "Paste links, choose a format and download. One link per line."),
         ["Links"] = ("_Links", "_Links"), ["Paste"] = ("_Colar", "_Paste"),
         ["Language"] = ("_Idioma", "_Language"), ["Destination"] = ("_Salvar em", "_Save to"),
