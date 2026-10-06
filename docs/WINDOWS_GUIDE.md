@@ -3,12 +3,12 @@
 Desenvolvimento / Developer: Wisley Vilela (WisleyVilela). Licença / License: MIT.
 [Releases oficiais / Official releases](https://github.com/Wisleyv/media_download/releases) · [Suporte / Support](https://github.com/Wisleyv/media_download/issues)
 
-Este manual é da linha **C# 3.x**, atualmente em preparação de distribuição. A versão
+Este manual é da versão estável **C# 3.0.0**. A versão
 PowerShell 2.x permanece nas releases anteriores. As capturas mostram uma compilação de
 desenvolvimento, caminhos de exemplo e, na barra de progresso, valores simulados.
 O guia local `GUIDE.txt` contém as instruções textuais; as imagens estão no manual online.
 
-This manual covers **C# 3.x**, currently being prepared for distribution. PowerShell 2.x
+This manual covers stable **C# 3.0.0**. PowerShell 2.x
 remains available in earlier releases. Screenshots show a development build, example paths
 and simulated progress values. The offline `GUIDE.txt` contains text instructions;
 images are available in the online manual.
@@ -17,8 +17,7 @@ images are available in the online manual.
 
 ### 1. Escolher e abrir o pacote
 
-Na página oficial, escolha uma release **C# Windows 3.x** quando disponível. Uma prévia
-estará identificada como *Pre-release*; ela não substitui automaticamente a versão estável.
+Na página oficial, escolha a release estável **C# Windows 3.0.0**.
 Baixe o instalador **ou** o ZIP portátil e o arquivo `SHA256SUMS.txt` da mesma release.
 
 | Opção | Arquivo | Como usar |
@@ -144,17 +143,17 @@ nunca apague a pasta de mídia para desinstalar o programa.
 | Link privado, removido ou restrito | Consulte os detalhes; confirme seu acesso e a validade do link. Atualizar não supera restrições de acesso. |
 | Arquivo final não aparece | Selecione um item concluído e use Abrir pasta; confira o caminho exibido e o destino escolhido. |
 
-O piloto validou o portátil, a obtenção de componentes, o progresso e as correções visuais.
-Ainda estão pendentes instalador em máquina limpa, conta padrão separada, atualização entre
-versões diferentes e validação completa de teclado/leitor de tela/DPI real. Consulte
-[registro da etapa 6](WINDOWS_STAGE6.md) antes de interpretar esta prévia como release final.
+O usuário confirmou funcionamento previsto em máquina limpa durante o piloto. Build,
+testes automatizados, obtenção de componentes e validações locais de instalação passaram.
+Conta padrão separada, atualização entre versões diferentes e validação completa de
+teclado/leitor de tela/DPI real não possuem confirmação específica. Esses limites foram
+mantidos explícitos na entrega estável; consulte o [registro da etapa 6](WINDOWS_STAGE6.md).
 
 ## English
 
 ### 1. Choose and open a package
 
-On the official releases page, choose a **C# Windows 3.x** release when available.
-A preview is marked *Pre-release*; it does not automatically replace the stable version.
+On the official releases page, choose stable **C# Windows 3.0.0**.
 Download either the installer or portable ZIP, plus `SHA256SUMS.txt` from the same release.
 
 | Option | File | How to use |
@@ -277,7 +276,8 @@ never delete the media folder to uninstall CataMedia.
 | Private, removed or restricted link | Review details and check your access/link validity. Updates do not bypass access restrictions. |
 | Final file cannot be found | Select a completed item and use Open folder; check the displayed path and chosen destination. |
 
-The pilot validated portable use, component acquisition, progress and visual fixes.
-Clean-machine installer, a separate standard-user account, upgrades between different
-versions and full keyboard/screen-reader/real-DPI validation remain pending. See the
-[stage 6 record](WINDOWS_STAGE6.md) before treating this preview as a final release.
+The user confirmed expected behavior on a clean machine during the pilot. Build,
+automated tests, component acquisition and local installation checks passed.
+A separate standard-user account, upgrades between different versions and full
+keyboard/screen-reader/real-DPI validation have no specific confirmation. These limits
+remain explicit in the stable delivery; see the [stage 6 record](WINDOWS_STAGE6.md).

@@ -5,7 +5,7 @@ This tutorial covers **C# 3.x Windows x64**, not the PowerShell 2.x scripts.
 
 ## Português
 
-1. Na [página oficial de releases](https://github.com/Wisleyv/media_download/releases), escolha uma release **C# Windows 3.x** quando disponível. Uma prévia estará identificada como *Pre-release*. Confira origem e `SHA256SUMS.txt`.
+1. Na [página oficial de releases](https://github.com/Wisleyv/media_download/releases), escolha a release estável **C# Windows 3.0.0**. Confira origem e `SHA256SUMS.txt`.
 2. Execute o instalador por usuário, ou extraia **todo** o ZIP portátil em uma pasta gravável. Abra pelo menu Iniciar ou por `CataMedia.exe`. O .NET está incluído.
 3. Abra **Componentes**. Escolha yt-dlp, confira a consulta e confirme **Obter / atualizar**. Repita com FFmpeg + FFprobe e Node.js na mesma janela; não é necessário reiniciar.
 4. Cole um link por linha. Escolha **Salvar em**, formato e resolução máxima ou qualidade MP3. WAV e FLAC não recuperam qualidade perdida na origem.
@@ -20,7 +20,7 @@ Leia o [guia completo](WINDOWS_GUIDE.md) para atualização, dados, cookies e so
 
 ## English
 
-1. On the [official releases page](https://github.com/Wisleyv/media_download/releases), choose a **C# Windows 3.x** release when available. A preview is marked *Pre-release*. Verify its source and `SHA256SUMS.txt`.
+1. On the [official releases page](https://github.com/Wisleyv/media_download/releases), choose stable **C# Windows 3.0.0**. Verify its source and `SHA256SUMS.txt`.
 2. Run the per-user installer, or extract the **entire** portable ZIP into a writable folder. Launch from Start or `CataMedia.exe`. .NET is bundled.
 3. Open **Components**. Select yt-dlp, review the check and confirm **Get / update**. Repeat for FFmpeg + FFprobe and Node.js in the same window; no restart is needed.
 4. Paste one link per line. Choose **Save to**, format and maximum resolution or MP3 quality. WAV and FLAC cannot restore quality lost at the source.

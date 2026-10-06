@@ -13,7 +13,7 @@ preparing documentation or packages does not authorize tags, releases, merges or
 
 - Concluir/revisar os recortes autorizados e integrar os PRs na ordem de dependência, com CI aprovada. Não reescrever histórico nem inferir autorização para merges.
 - Escolher o commit integrado que será distribuído. Atualizar `Version` em `src/CataMedia.Desktop/CataMedia.Desktop.csproj` antes de fixar esse commit. `3.0.0-stage5` é uma identificação de desenvolvimento, não uma versão final.
-- Para a primeira prévia, adotar uma versão de pré-lançamento, por exemplo `3.0.0-preview.1`, e futura tag correspondente `v3.0.0-preview.1`. São exemplos de nomenclatura, não uma versão/tag criada.
+- A entrega inicial foi aceita como estável pelo usuário: versão `3.0.0`, tag `v3.0.0`, release sem Pre-release. Prévias futuras devem usar sufixo e marcação próprios.
 - Atualizar apresentação, guia PT-BR/EN, capturas, notas da versão e limites conhecidos. O link Manual no GitHub deve apontar para um commit publicado, ou tag existente, que contenha o manual daquela compilação; não usar branch temporária.
 - Conferir os cenários pendentes em [WINDOWS_STAGE6.md](WINDOWS_STAGE6.md): instalador em máquina limpa, conta padrão separada, atualização entre versões diferentes, preservação de dados e acessibilidade/DPI real. Não registrá-los como aprovados sem evidência. Limitações aceitas devem constar das notas.
 
@@ -71,7 +71,7 @@ de atualização entre versões. Os pacotes permanecem sem assinatura digital.
 1. Criar a tag da versão no mesmo commit conferido. Não mover/reutilizar tags existentes.
 2. No GitHub, preparar uma release em rascunho a partir dessa tag e anexar ZIP, instalador e `SHA256SUMS.txt` daquela saída.
 3. Escrever notas PT-BR/EN: o que mudou, como escolher os pacotes, .NET incluído, componentes separados, ausência de assinatura, dados/atualização, limitações e links de manual/suporte.
-4. Para a primeira prévia, marcar **Pre-release** e não substituir a indicação de versão estável PowerShell. A consulta automática do CataMedia ignora prévias; usuários acessam essa distribuição pela página de releases.
+4. Para a entrega estável 3.0.0, desmarcar **Pre-release** e indicar a release como mais recente. Manter todas as releases PowerShell disponíveis. A consulta automática do CataMedia reconhece releases estáveis C# 3.x com os três assets esperados.
 5. Após publicação, conferir tag remota/commit, nomes e hashes dos assets baixados do GitHub. Conferir links do manual e das imagens, não apenas os links no checkout local.
 
 Se a conferência falhar, interromper e investigar. Não reconstruir silenciosamente os
@@ -86,8 +86,8 @@ inventário e preservação recuperável; não acompanha automaticamente a publi
 Review authorized changes and integrate dependent PRs in order, with passing CI and
 explicit merge authorization. Choose the integrated source commit. Set `Version` in
 `src/CataMedia.Desktop/CataMedia.Desktop.csproj` before fixing that commit; `3.0.0-stage5`
-is a development identifier. For an initial preview, a name such as `3.0.0-preview.1`
-with tag `v3.0.0-preview.1` is appropriate; these are examples, not existing tags.
+is a development identifier. The user accepted the initial delivery as stable:
+version `3.0.0`, tag `v3.0.0`, without Pre-release.
 
 Update presentation, both guide languages, screenshots, release notes and known limits.
 Pin the application's manual link to a published commit or existing tag containing that
@@ -132,9 +132,9 @@ attach the matching ZIP, installer and checksums. Include PT-BR/EN notes coverin
 package choice, bundled .NET, separate tools, unsigned distribution, data preservation,
 upgrade instructions, limitations and manual/support links.
 
-Mark the initial preview **Pre-release** and preserve the PowerShell stable presentation.
-Automatic application checks ignore previews; they remain accessible from the releases
-page. After publication, verify the remote tag/commit, download the assets to compare
+Publish stable 3.0.0 without **Pre-release** and mark it latest, retaining PowerShell releases.
+Automatic application checks recognize stable C# 3.x releases with the three expected assets.
+After publication, verify the remote tag/commit, download the assets to compare
 hashes, and check published manual/image links. Do not silently replace files or move
 an existing tag after a failure. Preserve previous releases/history. Cleanup is a separate
 later task with inventory and recoverable preservation.

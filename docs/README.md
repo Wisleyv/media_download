@@ -9,8 +9,9 @@
 ## Português
 
 O CataMedia C# 3.x é um aplicativo para Windows x64, com interface em português e inglês,
-que usa yt-dlp para obter mídia autorizada. Esta linha está em preparação de distribuição;
-os pacotes C# são diferentes da versão PowerShell 2.x disponível nas releases anteriores.
+que usa yt-dlp para obter mídia autorizada. A versão estável **3.0.0** oferece instalador
+e ZIP portátil na [release oficial](https://github.com/Wisleyv/media_download/releases/tag/v3.0.0).
+A versão PowerShell 2.x permanece disponível nas releases anteriores.
 
 - Vídeo MP4 com resolução máxima de 720p ou 1080p.
 - Áudio MP3 com qualidade Baixa/Padrão/Alta; WAV e FLAC sem seletor de qualidade artificial.
@@ -42,8 +43,9 @@ Não há logs automáticos na pasta dos downloads. Preferências são salvas som
 ## English
 
 CataMedia C# 3.x is a Windows x64 application with Portuguese and English interfaces,
-using yt-dlp to obtain authorized media. This line is being prepared for distribution;
-its packages are separate from the PowerShell 2.x releases.
+using yt-dlp to obtain authorized media. Stable **3.0.0** provides an installer and a
+portable ZIP in the [official release](https://github.com/Wisleyv/media_download/releases/tag/v3.0.0).
+PowerShell 2.x remains available in earlier releases.
 
 - MP4 video with a maximum resolution of 720p or 1080p.
 - MP3 audio with Low/Standard/High quality; WAV and FLAC without an ineffective quality selector.
