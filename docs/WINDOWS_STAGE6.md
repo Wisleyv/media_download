@@ -312,3 +312,18 @@ ser executado da raiz do checkout, conforme instruído. Link do manual já corri
 Preservado detalhe técnico limitado na mensagem de falha de inicialização. Fortalecido
 um teste de contenção do destino: arquivo externo agora existe e tem metadados válidos,
 para que a rejeição dependa da verificação do caminho, não da ausência do arquivo.
+
+## Entrega estável autorizada — 3.0.0
+
+PRs #1–#6 integrados na main em 622a3ec3d532fade81e984929690857a2de9c2f6,
+com CI Windows aprovada e 109 testes aprovados (4 opcionais ignorados).
+Usuário aceitou encerrar como versão estável, publicar instalador/portátil e executar
+sanitização com inventário e preservação recuperável, sem repetir o piloto em máquina
+limpa. Versão incorporada 3.0.0; manual da aplicação fixado na tag v3.0.0 que será
+criada no commit conferido antes da publicação. Apresentação e guia ajustados para
+entrega estável. Conta padrão separada, atualização entre versões e acessibilidade/DPI
+ampla continuam sem confirmação específica e serão descritas nas notas.
+
+O encerramento inclui publicação, conferência dos assets baixados do GitHub e limpeza
+recuperável de itens obsoletos. Histórico, releases anteriores, dados e arquivos pessoais
+serão preservados. Registro posterior documentará os resultados, sem mover a tag.
