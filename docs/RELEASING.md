@@ -105,8 +105,8 @@ Portuguese section above with actual tool paths. Record skipped real tests as sk
 Run the packager with PowerShell **7** (`pwsh`), not Windows PowerShell 5.1.
 `scripts/package-windows.ps1` produces a self-contained, untrimmed win-x64 payload and
 uses those same binaries for ZIP and Setup. It does not create tags, publish releases
-or overwrite an existing output folder. `scripts/package-release.ps1` is the legacy
-PowerShell packager and must not be used for C#.
+or overwrite an existing output folder. The legacy PowerShell packager is preserved
+in historical tags and must not be used for C#.
 
 ### 3. Verify packages
 
@@ -141,7 +141,7 @@ later task with inventory and recoverable preservation.
 
 ## Distribuição legada / Legacy distribution
 
-PowerShell packages use `scripts/package-release.ps1`, not the C# script. The historical
+The PowerShell packager is preserved in [v2.0.1](https://github.com/Wisleyv/media_download/blob/v2.0.1/scripts/package-release.ps1), not the current tree. The historical
 v2.0.0 tag predates the application contained in its uploaded ZIP; v2.0.1 corrected
 source/tag/package correspondence. Preserve that evidence and the previous releases:
 [release v2.0.1](https://github.com/Wisleyv/media_download/releases/tag/v2.0.1).

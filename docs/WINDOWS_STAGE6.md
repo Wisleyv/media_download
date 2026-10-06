@@ -327,3 +327,11 @@ ampla continuam sem confirmação específica e serão descritas nas notas.
 O encerramento inclui publicação, conferência dos assets baixados do GitHub e limpeza
 recuperável de itens obsoletos. Histórico, releases anteriores, dados e arquivos pessoais
 serão preservados. Registro posterior documentará os resultados, sem mover a tag.
+
+## Publicação estável e encerramento
+
+Release v3.0.0 estável publicada, marcada como mais recente, com instalador, portátil e
+checksums do commit e1afffc1c160fa32ac95a0dd29266f93d3c2e18e. 109 testes aprovados,
+4 opcionais ignorados; build e CI aprovadas. Não foi exigida repetição do piloto em
+máquina limpa. Resultados, sanitização recuperável e limites em WINDOWS_CLOSURE.md.
+As releases PowerShell e o histórico permanecem disponíveis; tag v3.0.0 não será movida.

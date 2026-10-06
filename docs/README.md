@@ -77,12 +77,12 @@ Only obtain content you are authorized to download.
 - [Validação e limitações da etapa 6 / Stage 6 evidence and limits](WINDOWS_STAGE6.md)
 
 As imagens mostram a compilação de desenvolvimento com caminhos e dados de exemplo.
-Os PDFs/RTF antigos nesta pasta pertencem à documentação PowerShell; não são o manual C#.
+Os PDFs/RTF PowerShell foram retirados da árvore atual e preservados no histórico.
 Os fontes e manuais da versão anterior permanecem no [histórico v2.0.1](https://github.com/Wisleyv/media_download/tree/v2.0.1)
 e na [release v2.0.1](https://github.com/Wisleyv/media_download/releases/tag/v2.0.1).
 
-Images show a development build with example paths and data. Older PDF/RTF files in this
-folder document PowerShell, not the C# application. Previous source, manuals and releases
+Images show a development build with example paths and data. Older PowerShell PDF/RTF
+files are preserved in history. Previous source, manuals and releases
 remain available through the v2.0.1 links above.
 
 ## Autor e licença / Author and license
