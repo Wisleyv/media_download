@@ -15,7 +15,9 @@ Build sem avisos/erros, 109 testes aprovados, 4 reais opcionais ignorados.
 [CI do commit publicado](https://github.com/Wisleyv/media_download/actions/runs/37392626237)
 aprovadas. Abertura portátil/instalada, instalação por usuário, reinstalação do mesmo
 pacote e desinstalação com preservação dos dados/mídia de teste validadas localmente.
-Hashes locais conferem com os digests SHA-256 registrados pelo GitHub.
+Hashes locais conferem com os digests SHA-256 registrados pelo GitHub. Os dois pacotes
+e o arquivo de checksums publicados também foram baixados do GitHub; os hashes completos
+conferem com os arquivos de origem.
 
 | Arquivo | SHA-256 |
 |---|---|
